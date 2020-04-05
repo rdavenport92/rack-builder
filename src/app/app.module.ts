@@ -21,6 +21,9 @@ import { AppComponent } from './app.component';
 import { MaterialDepsModule } from './shared/modules/material-deps.module';
 import { ElevationComponent } from './elevation/elevation.component';
 import { CablingComponent } from './cabling/cabling.component';
+import { BuildWindowComponent } from './elevation/build-window/build-window.component';
+import { BuildLibraryComponent } from './elevation/build-library/build-library.component';
+import { DeviceEditorComponent } from './elevation/device-editor/device-editor.component';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
@@ -28,7 +31,7 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
 }
 
 @NgModule({
-  declarations: [AppComponent, ElevationComponent, CablingComponent],
+  declarations: [AppComponent, ElevationComponent, CablingComponent, BuildWindowComponent, BuildLibraryComponent, DeviceEditorComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,

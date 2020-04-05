@@ -1,19 +1,23 @@
-<nav mat-tab-nav-bar class="toolbar">
-  <a
-    mat-tab-link
-    routerLink="elevation"
-    routerLinkActive
-    #ele="routerLinkActive"
-    [active]="ele.isActive"
-    >Elevation</a
-  >
-  <a
-    mat-tab-link
-    routerLink="cabling"
-    routerLinkActive
-    #cab="routerLinkActive"
-    [active]="cab.isActive"
-    >Cabling</a
-  >
-</nav>
-<router-outlet></router-outlet>
+<div class="app-wrapper">
+  <nav mat-tab-nav-bar>
+    <a
+      mat-tab-link
+      routerLink="elevation"
+      routerLinkActive
+      #ele="routerLinkActive"
+      [active]="ele.isActive"
+      >Elevation</a
+    >
+    <a
+      mat-tab-link
+      routerLink="cabling"
+      routerLinkActive
+      #cab="routerLinkActive"
+      [active]="cab.isActive"
+      >Cabling</a
+    >
+  </nav>
+  <div class="router-wrapper">
+    <router-outlet></router-outlet>
+  </div>
+</div>

@@ -5,8 +5,8 @@ import { Component, OnInit } from '@angular/core';
   templateUrl: './elevation.component.html',
   styleUrls: ['./elevation.component.scss']
 })
-export class ElevationComponent implements OnInit {
-  constructor() {}
+export class ElevationComponent {
+  libExpanded = true;
 
-  ngOnInit(): void {}
+  constructor() {}
 }

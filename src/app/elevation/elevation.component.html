@@ -1,1 +1,26 @@
-<p>elevation works!</p>
+<div class="elevation-wrapper">
+  <mat-drawer-container class="drawer-container">
+    <div class="build-container">
+      <div class="build-window">
+        <app-build-window>
+          <button mat-mini-fab (click)="drawer.toggle()">
+            <mat-icon *ngIf="!drawer.opened">storage</mat-icon>
+            <mat-icon *ngIf="drawer.opened">keyboard_arrow_right</mat-icon>
+          </button>
+        </app-build-window>
+      </div>
+      <div class="device-editor">
+        <app-device-editor></app-device-editor>
+      </div>
+    </div>
+    <mat-drawer
+      #drawer
+      mode="side"
+      opened="true"
+      position="end"
+      class="build-library"
+    >
+      <app-build-library> </app-build-library>
+    </mat-drawer>
+  </mat-drawer-container>
+</div>

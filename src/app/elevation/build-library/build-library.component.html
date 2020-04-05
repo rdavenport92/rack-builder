@@ -1,0 +1,14 @@
+<div class="filter-form">
+  <mat-form-field>
+    <mat-label>Item Type</mat-label>
+    <mat-select>
+      <mat-option *ngFor="let type of itemTypes" [value]="type.type">
+        {{ type.label }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput placeholder="Filter results" />
+  </mat-form-field>
+</div>
+<mat-divider></mat-divider>

@@ -1,0 +1,28 @@
+.elevation-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+
+  .drawer-container {
+    flex: 1;
+
+    .build-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+
+      .build-window {
+        flex: 4;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.082);
+      }
+
+      .device-editor {
+        flex: 2;
+      }
+    }
+
+    .build-library {
+      width: 400px;
+    }
+  }
+}
