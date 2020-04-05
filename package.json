@@ -98,6 +98,8 @@
     "@angular/animations": "^9.0.0 || ^10.0.0-0",
     "@angular/cdk": "9.2.0",
     "@angular/forms": "^9.0.0 || ^10.0.0-0",
-    "@angular/material": "9.2.0"
+    "@angular/material": "9.2.0",
+    "@types/three": "0.103.2",
+    "three": "0.115.0"
   }
 }

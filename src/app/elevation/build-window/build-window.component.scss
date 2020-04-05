@@ -1,11 +1,18 @@
 .build-window-wrapper {
   height: 100%;
   width: 100%;
+  display: flex;
 
   .library-expand-btn {
     position: absolute;
     top: 0px;
     right: 0px;
     padding: 8px;
+  }
+
+  .three-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
   }
 }
