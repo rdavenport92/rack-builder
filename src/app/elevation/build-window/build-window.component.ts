@@ -1,9 +1,16 @@
-import { Component, ViewChild, ElementRef, OnDestroy } from '@angular/core';
+import {
+  Component,
+  ViewChild,
+  ElementRef,
+  OnDestroy,
+  Input
+} from '@angular/core';
 
 import { interval, Subscription } from 'rxjs';
-import { tap, map, distinctUntilChanged } from 'rxjs/operators';
+import { tap, map, distinctUntilChanged, filter } from 'rxjs/operators';
 
 import { ElevationService } from '../elevation.service';
+import { Elevation } from '../elevation';
 
 @Component({
   selector: 'app-build-window',
@@ -11,18 +18,27 @@ import { ElevationService } from '../elevation.service';
   styleUrls: ['./build-window.component.scss']
 })
 export class BuildWindowComponent implements OnDestroy {
-  @ViewChild('threeContainer') set threeContainer(elementRef: ElementRef) {
-    this.threeContainerRef = elementRef;
-    this.elevationService.attachThreeToDom(elementRef.nativeElement);
+  @ViewChild('threeContainer') set threeContainer(
+    elementRef: ElementRef | undefined
+  ) {
+    if (elementRef) {
+      this.threeContainerRef = elementRef;
+      this.elevationService.attachThreeToDom(elementRef.nativeElement);
+    }
   }
 
-  threeContainerRef: ElementRef;
+  threeContainerRef: ElementRef | undefined;
 
   threeContainerSize = interval(60).pipe(
-    map(() => [
-      this.threeContainerRef.nativeElement.offsetWidth,
-      this.threeContainerRef.nativeElement.offsetHeight
-    ]),
+    map(() => {
+      if (this.threeContainerRef) {
+        return [
+          this.threeContainerRef.nativeElement.offsetWidth,
+          this.threeContainerRef.nativeElement.offsetHeight
+        ];
+      }
+    }),
+    filter(elementRef => !!elementRef),
     distinctUntilChanged((prev, current) => {
       return prev[0] === current[0] && prev[1] === current[1];
     }),

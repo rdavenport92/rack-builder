@@ -1,5 +1,13 @@
 <div class="device-editor-wrapper">
   <mat-card class="device-editor-card">
-    Some stuff
+    <mat-card-title>
+      Item Editor
+    </mat-card-title>
+    <mat-card-content
+      ><span *ngIf="!(activeItem | async)"
+        >Details about selected item and controls show up here.</span
+      >
+      <span *ngIf="activeItem | async as item">{{ item }}</span>
+    </mat-card-content>
   </mat-card>
 </div>

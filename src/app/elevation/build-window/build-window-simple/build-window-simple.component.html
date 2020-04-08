@@ -1,0 +1,20 @@
+<div #project class="project-container"></div>
+<div class="settings-controls">
+  <div class="zoom-text">{{ zoomValue | async | number: '1.0-0' }}%</div>
+  <div class="zoom-controls">
+    <button
+      (click)="zoomOut()"
+      [disabled]="projectNotLoaded | async"
+      mat-mini-fab
+    >
+      <mat-icon>zoom_out</mat-icon>
+    </button>
+    <button
+      (click)="zoomIn()"
+      [disabled]="projectNotLoaded | async"
+      mat-mini-fab
+    >
+      <mat-icon>zoom_in</mat-icon>
+    </button>
+  </div>
+</div>

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { ElevationService } from './elevation.service';
 
 @Component({
   selector: 'app-elevation',
@@ -8,5 +9,5 @@ import { Component, OnInit } from '@angular/core';
 export class ElevationComponent {
   libExpanded = true;
 
-  constructor() {}
+  constructor(private elevationService: ElevationService) {}
 }
