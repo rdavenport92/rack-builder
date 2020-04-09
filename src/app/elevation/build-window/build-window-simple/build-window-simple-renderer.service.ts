@@ -1,25 +1,49 @@
-import { Injectable } from '@angular/core';
-import { Elevation, Cabinet } from '../../elevation';
+import {
+  Injectable,
+  OnDestroy,
+  ChangeDetectorRef,
+  NgZone
+} from '@angular/core';
+import { Elevation, Cabinet, Project, ObjectType } from '../../elevation';
 import { ElevationService } from '../../elevation.service';
 import { BehaviorSubject, combineLatest } from 'rxjs';
-import { tap, filter, take, map } from 'rxjs/operators';
+import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
+
+export enum EditMode {
+  CAB = 'cabinet',
+  DEVICE = 'device',
+  INTEGRATE = 'integrate'
+}
+
+enum CabMode {
+  SINGLE = 'single',
+  MULTI = 'multi'
+}
 
 interface RendererSettings {
   scale: number;
+  editMode: {
+    mode: EditMode;
+    cabMode: CabMode;
+  };
 }
 
 const initialSettings: RendererSettings = {
-  scale: 0
+  scale: 0,
+  editMode: {
+    mode: EditMode.CAB,
+    cabMode: CabMode.MULTI
+  }
 };
 
 @Injectable({
   providedIn: 'root'
 })
-export class BuildWindowSimpleRendererService {
+export class BuildWindowSimpleRendererService implements OnDestroy {
   private pixelsPerInch = 96; // probably will want to calculate this in main process to be more accurate per device
 
   canvas = new BehaviorSubject(undefined);
-  projectState = this.elevationService.currentProject;
+  projectState = this.elevationService.currentProject.pipe(shareReplay(1));
   rendererSettings = new BehaviorSubject(initialSettings);
 
   renderProject = combineLatest([
@@ -35,7 +59,33 @@ export class BuildWindowSimpleRendererService {
 
   constructor(private elevationService: ElevationService) {
     this.renderProject.subscribe();
-    console.log(window);
+    window.addEventListener('keydown', e => this.registerHotkeys(e));
+  }
+
+  ngOnDestroy() {
+    window.removeEventListener('keydown', this.registerHotkeys);
+  }
+
+  registerHotkeys(e: KeyboardEvent) {
+    switch (e.keyCode) {
+      case 97: // Numpad1
+        this.changeEditMode(EditMode.CAB);
+        break;
+      case 98: // Numpad2
+        this.changeEditMode(EditMode.DEVICE);
+        break;
+      case 99: // Numpad3
+        this.changeEditMode(EditMode.INTEGRATE);
+        break;
+      case 187: // +
+        this.zoom(0.01);
+        break;
+      case 189: // -
+        this.zoom(-0.01);
+        break;
+      default:
+        break;
+    }
   }
 
   attachCanvas(element: HTMLElement) {
@@ -43,8 +93,7 @@ export class BuildWindowSimpleRendererService {
     projectElementChild.classList.add('project-child');
     const scene = document.createElement('div');
     scene.id = 'scene';
-    scene.style.display = 'flex';
-    scene.style.alignItems = 'flex-end';
+    scene.classList.add('scene');
     element.appendChild(projectElementChild);
     projectElementChild.appendChild(scene);
     this.canvas.next(element);
@@ -52,97 +101,174 @@ export class BuildWindowSimpleRendererService {
 
   private renderUpdate(
     canvas: HTMLElement,
-    update: Elevation[],
+    update: Project,
     settings: RendererSettings
   ) {
-    if (!settings.scale && !!canvas && !!update.length) {
+    if (!settings.scale && !!canvas && !!update.elevations.length) {
       // scale has not been set yet - setting temp scale to 0.01 so that we can draw
       // cabinets and get an idea for what the initial scale needs to be.
-      const tempSettings = { ...settings, scale: 0.01 };
-      this.drawCabinets(
-        canvas,
-        update.map(el => el.cabinet),
-        tempSettings
-      );
+      const tempSettings = {
+        ...settings,
+        scale: 0.01
+      };
+      this.drawCabinets(update, tempSettings);
       // by this point, the canvas will contain accurate dimensions which will allow us to set
       // a more appropriate initial scale based on the dimensions of the entire scene
       const newScale = this.calculateScale(canvas);
-      this.rendererSettings.next({ ...settings, scale: newScale });
+      this.rendererSettings.next({
+        ...settings,
+        scale: newScale,
+        editMode: {
+          ...settings.editMode,
+          cabMode: update.elevations.length > 1 ? CabMode.MULTI : CabMode.SINGLE
+        }
+      });
     } else if (!!settings.scale && !!canvas && !!update) {
-      this.drawCabinets(
-        canvas,
-        update.map(el => el.cabinet),
-        settings
-      );
+      this.drawCabinets(update, settings);
     }
   }
 
-  private drawCabinets(
-    canvas: HTMLElement,
-    cabinets: Cabinet[],
-    settings: RendererSettings
-  ) {
+  private drawCabinets(project: Project, settings: RendererSettings) {
+    const ppi = this.pixelsPerInch;
+    const scale = settings.scale;
+
+    const scene = document.getElementById('scene');
+
+    const cabinets = project.elevations.map(ele => ele.cabinet);
+
     for (let i = 0; i < cabinets.length; i++) {
       const cabinet = cabinets[i];
+
+      // clean slate
       let cabElement = document.getElementById(`${cabinet.id}`);
-      let deviceOpening = document.getElementById(`${cabinet.id}-opening`);
-      if (!cabElement) {
-        // creating cabinet
+      if (cabElement) {
+        scene.removeChild(cabElement);
+      }
+
+      if (
+        settings.editMode.cabMode === CabMode.MULTI ||
+        (settings.editMode.cabMode === CabMode.SINGLE &&
+          project.activeItem &&
+          project.activeItem.parentId === cabinet.id) ||
+        project.elevations.length === 1
+      ) {
+        const { width, height } = cabinet.dimensions;
+
+        // drawing cabinet
         cabElement = document.createElement('div');
         cabElement.id = cabinet.id;
-        //cabElement.style.border = '1px solid #FFFFFF';
-        cabElement.style.backgroundColor = '#000000';
-        cabElement.style.position = 'relative';
-        cabElement.style.display = 'flex';
-        cabElement.style.justifyContent = 'center';
-        cabElement.style.alignItems = 'flex-end';
-        // creating device opening
-        deviceOpening = document.createElement('div');
-        deviceOpening.id = `${cabinet.id}-opening`;
-        deviceOpening.style.border = '1px solid #FFFFFF';
-        deviceOpening.style.position = 'absolute';
-        deviceOpening.style.flex = '1';
-        deviceOpening.style.display = 'flex';
-        deviceOpening.style.flexDirection = 'column';
-        // creating ru locations
-        for (let i = cabinet.ruCount - 1; i >= 0; i--) {
-          const ru = document.createElement('div');
-          ru.id = `${cabinet.id}-ru-${i + 1}`;
-          ru.classList.add('ru');
-          ru.style.flex = '1';
-          ru.style.border = '.5px solid white';
-          ru.onclick = event => this.selectItem(event);
-          deviceOpening.appendChild(ru);
+        cabElement.setAttribute('data-type', ObjectType.CAB);
+        cabElement.classList.add('cabinet');
+        cabElement.style.width = `${width * ppi * scale}px`;
+        cabElement.style.height = `${height * ppi * scale}px`;
+        cabElement.style.margin = `${4 * ppi * scale}px`;
+        // handling mode
+        if (settings.editMode.mode === EditMode.CAB) {
+          cabElement.onclick = event => this.selectItem(event);
+          cabElement.classList.add('active-mode');
         }
-        // appending all divs
-        const scene = document.getElementById('scene');
+        // handling if active
+        if (
+          !!project.activeItem &&
+          project.activeItem.type === ObjectType.CAB &&
+          project.activeItem.item.id === cabinet.id
+        ) {
+          cabElement.classList.add('active-object');
+        }
+
+        // drawing cabinet opening
+        const cabinetOpening = document.createElement('div');
+        cabinetOpening.id = `${cabinet.id}-opening`;
+        cabinetOpening.classList.add('cabinet-opening');
+        cabinetOpening.style.width = `${19 * ppi * scale}px`;
+        cabinetOpening.style.height = `${cabinet.ruCount *
+          1.75 *
+          ppi *
+          scale}px`;
+        cabinetOpening.style.bottom = `${cabinet.openingOffset *
+          ppi *
+          scale}px`;
+        cabinetOpening.style.pointerEvents = 'none';
+
+        // drawing ru's
+        let ruSpan = 0;
+        for (let i = 0; i < cabinet.ruCount; i++) {
+          if (ruSpan) {
+            // handling rendering a devices RU span
+            ruSpan += -1;
+            continue;
+          }
+          const ru = cabinet.ruData[i];
+          const ruElement = document.createElement('div');
+          ruElement.id = cabinet.ruData[i].id;
+          ruElement.setAttribute('data-type', ObjectType.RU);
+          ruElement.classList.add('ru');
+          // handling if populated
+          if (ru.populator) {
+            ruSpan = ru.populator.ruSpan - 1;
+            ruElement.style.flex = `${ru.populator.ruSpan}`;
+            ruElement.style.backgroundColor = `#555555`;
+            ruElement.innerText = ru.populator.name;
+          }
+          // handling mode
+          if (settings.editMode.mode === EditMode.DEVICE) {
+            ruElement.style.pointerEvents = 'auto';
+            ruElement.onclick = event => this.selectItem(event);
+            ruElement.classList.add('active-mode');
+          } else {
+            ruElement.style.pointerEvents = 'none';
+          }
+          // handling if active
+          if (
+            !!project.activeItem &&
+            project.activeItem.type === ObjectType.RU &&
+            project.activeItem.item.id === ru.id
+          ) {
+            ruElement.classList.add('active-object');
+          }
+          cabinetOpening.appendChild(ruElement);
+        }
+
+        // adding cabinet to dom
         scene.appendChild(cabElement);
-        cabElement.appendChild(deviceOpening);
+        cabElement.appendChild(cabinetOpening);
       }
-      // updating cabinet
-      cabElement.style.width = `${cabinet.dimensions.width *
-        this.pixelsPerInch *
-        settings.scale}px`;
-      cabElement.style.height = `${cabinet.dimensions.height *
-        this.pixelsPerInch *
-        settings.scale}px`;
-      cabElement.style.margin = '4px';
-      // updating device opening
-      deviceOpening.style.width = `${19 *
-        this.pixelsPerInch *
-        settings.scale}px`;
-      deviceOpening.style.height = `${cabinet.ruCount *
-        1.75 *
-        this.pixelsPerInch *
-        settings.scale}px`;
-      deviceOpening.style.bottom = `${cabinet.openingOffset *
-        this.pixelsPerInch *
-        settings.scale}px`;
     }
   }
 
-  private selectItem(event: MouseEvent) {
-    this.elevationService.activeItemId.next((event.target as any).id);
+  private async selectItem(event: MouseEvent) {
+    const id = (event.target as any).id;
+    const type = (event.target as any).dataset.type;
+    const item = { id, type };
+    const newState = await this.elevationService.currentProject
+      .pipe(
+        map(currentState => {
+          const activeItem = this.getActiveItem(item, currentState);
+          return { ...currentState, activeItem };
+        }),
+        take(1)
+      )
+      .toPromise();
+
+    this.elevationService.updateState(newState);
+  }
+
+  getActiveItem(item: { id: string; type: string }, project: Project) {
+    switch (item.type) {
+      case ObjectType.CAB:
+        const cabinet = project.elevations.filter(
+          ele => ele.cabinet.id === item.id
+        )[0].cabinet;
+        return { type: item.type, item: cabinet, parentId: cabinet.id };
+      case ObjectType.RU:
+        const parentRack = project.elevations.filter(ele =>
+          item.id.startsWith(ele.cabinet.id)
+        )[0].cabinet;
+        const selectedRU = parentRack.ruData.filter(ru => ru.id === item.id)[0];
+        return { type: item.type, item: selectedRU, parentId: parentRack.id };
+      default:
+        break;
+    }
   }
 
   // adjustments to settings
@@ -158,6 +284,95 @@ export class BuildWindowSimpleRendererService {
     } else {
       // need to scale to fit height
       return (canvasHeight / (sceneHeight * this.pixelsPerInch)) * 0.95;
+    }
+  }
+
+  async changeEditMode(newEditMode: EditMode) {
+    function handleEditModeUpdate(
+      currentSettings: RendererSettings,
+      project: Project
+    ) {
+      const currentEditMode = currentSettings.editMode.mode;
+      let newSettings: RendererSettings | undefined;
+      if (newEditMode === EditMode.CAB) {
+        if (currentEditMode !== EditMode.CAB) {
+          // if going to multi, need to re-populate elevations
+          newSettings = {
+            ...currentSettings,
+            editMode: {
+              ...currentSettings.editMode,
+              mode: newEditMode
+            }
+          };
+        } else {
+          if (
+            currentSettings.editMode.cabMode === CabMode.SINGLE &&
+            project.elevations.length > 1
+          ) {
+            const cabMode = CabMode.MULTI;
+            newSettings = {
+              ...currentSettings,
+              editMode: {
+                ...currentSettings.editMode,
+                cabMode
+              }
+            };
+          } else if (
+            currentSettings.editMode.cabMode === CabMode.MULTI &&
+            project.activeItem
+          ) {
+            const cabMode = CabMode.SINGLE;
+            newSettings = {
+              ...currentSettings,
+              editMode: {
+                ...currentSettings.editMode,
+                cabMode
+              }
+            };
+          }
+        }
+      } else if (
+        newEditMode === EditMode.DEVICE &&
+        currentEditMode !== EditMode.DEVICE
+      ) {
+        newSettings = {
+          ...currentSettings,
+          editMode: {
+            ...currentSettings.editMode,
+            mode: newEditMode
+          }
+        };
+      } else if (
+        newEditMode === EditMode.INTEGRATE &&
+        currentEditMode !== EditMode.INTEGRATE
+      ) {
+        newSettings = {
+          ...currentSettings,
+          editMode: {
+            ...currentSettings.editMode,
+            mode: newEditMode
+          }
+        };
+      }
+
+      return newSettings;
+    }
+
+    const newSettings:
+      | RendererSettings
+      | undefined = await this.rendererSettings
+      .pipe(
+        switchMap(currentSettings =>
+          this.projectState.pipe(
+            map(project => handleEditModeUpdate(currentSettings, project))
+          )
+        ),
+        take(1)
+      )
+      .toPromise();
+
+    if (newSettings) {
+      this.rendererSettings.next(newSettings);
     }
   }
 

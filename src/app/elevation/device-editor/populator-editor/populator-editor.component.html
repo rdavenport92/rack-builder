@@ -1,0 +1,19 @@
+<div>RU{{ ruLocation | async }}</div>
+<mat-form-field>
+  <mat-label>
+    Select Item
+  </mat-label>
+  <mat-select [formControl]="selectedPopulator">
+    <mat-option
+      *ngFor="let populator of populatorLibrary | async"
+      [value]="populator"
+      >{{ populator.name }}</mat-option
+    >
+  </mat-select>
+</mat-form-field>
+<button mat-raised-button color="primary" (click)="updateRU()">Save</button>
+{{ currentRU | async | json }}
+<br />
+<div>
+  {{ selectedPopulator.value | json }}
+</div>

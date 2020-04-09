@@ -1,13 +1,13 @@
 <div class="device-editor-wrapper">
   <mat-card class="device-editor-card">
-    <mat-card-title>
-      Item Editor
-    </mat-card-title>
-    <mat-card-content
-      ><span *ngIf="!(activeItem | async)"
-        >Details about selected item and controls show up here.</span
-      >
-      <span *ngIf="activeItem | async as item">{{ item }}</span>
+    <mat-card-content>
+      <ng-container *ngIf="activeItem | async as item">
+        <app-cabinet-editor
+          *ngIf="item.type === 'cabinet'"
+        ></app-cabinet-editor>
+        <app-populator-editor *ngIf="item.type === 'ru'"></app-populator-editor>
+        <app-cable-editor *ngIf="item.type === 'port'"></app-cable-editor>
+      </ng-container>
     </mat-card-content>
   </mat-card>
 </div>

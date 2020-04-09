@@ -4,4 +4,50 @@
   </div>
   <!-- <div #threeContainer class="three-container"></div> -->
   <app-build-window-simple class="renderer-container"></app-build-window-simple>
+  <div class="mode-controls">
+    <div class="mode-buttons" *ngIf="editMode | async as eMode">
+      <button
+        *ngIf="cabMode | async as cMode"
+        [color]="eMode === 'cabinet' ? 'primary' : 'accent'"
+        mat-mini-fab
+        (click)="changeEditMode('cabinet')"
+      >
+        <mat-icon *ngIf="cMode === 'multi'">view_column</mat-icon>
+        <mat-icon *ngIf="cMode === 'single'">view_carousel</mat-icon>
+      </button>
+      <button
+        mat-mini-fab
+        [color]="eMode === 'device' ? 'primary' : 'accent'"
+        (click)="changeEditMode('device')"
+      >
+        <mat-icon>storage</mat-icon>
+      </button>
+      <button
+        mat-mini-fab
+        [color]="eMode === 'integrate' ? 'primary' : 'accent'"
+        (click)="changeEditMode('integrate')"
+      >
+        <mat-icon>waves</mat-icon>
+      </button>
+    </div>
+  </div>
+  <div class="view-controls">
+    <div class="zoom-text">{{ zoomValue | async | number: '1.0-0' }}%</div>
+    <div class="zoom-buttons">
+      <button
+        (click)="zoomOut()"
+        [disabled]="!(projectLoaded | async)"
+        mat-mini-fab
+      >
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+      <button
+        (click)="zoomIn()"
+        [disabled]="!(projectLoaded | async)"
+        mat-mini-fab
+      >
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+    </div>
+  </div>
 </div>

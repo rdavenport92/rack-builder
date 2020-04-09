@@ -3,7 +3,7 @@
     <div class="build-container">
       <app-build-window class="build-window">
         <button mat-mini-fab (click)="drawer.toggle()">
-          <mat-icon *ngIf="!drawer.opened">storage</mat-icon>
+          <mat-icon *ngIf="!drawer.opened">settings</mat-icon>
           <mat-icon *ngIf="drawer.opened">keyboard_arrow_right</mat-icon>
         </button>
       </app-build-window>
@@ -11,13 +11,7 @@
         <app-device-editor></app-device-editor>
       </div>
     </div>
-    <mat-drawer
-      #drawer
-      mode="side"
-      opened="true"
-      position="end"
-      class="build-library"
-    >
+    <mat-drawer #drawer mode="side" position="end" class="build-library">
       <app-build-library> </app-build-library>
     </mat-drawer>
   </mat-drawer-container>

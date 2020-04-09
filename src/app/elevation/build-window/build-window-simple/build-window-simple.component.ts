@@ -21,20 +21,4 @@ export class BuildWindowSimpleComponent {
   }
 
   constructor(private renderer: BuildWindowSimpleRendererService) {}
-
-  projectNotLoaded = this.renderer.projectState.pipe(
-    map(project => !project.length)
-  );
-
-  zoomValue = this.renderer.rendererSettings.pipe(
-    map(settings => settings.scale * 100)
-  );
-
-  zoomIn() {
-    this.renderer.zoom(0.01);
-  }
-
-  zoomOut() {
-    this.renderer.zoom(-0.01);
-  }
 }

@@ -8,5 +8,6 @@ import { ElevationService } from '../elevation.service';
 })
 export class DeviceEditorComponent {
   activeItem = this.elevationService.activeItem;
+
   constructor(private elevationService: ElevationService) {}
 }

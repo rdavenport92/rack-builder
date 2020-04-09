@@ -7,7 +7,8 @@
     position: absolute;
     top: 0px;
     right: 0px;
-    padding: 6px;
+    padding-top: 6px;
+    padding-right: 16px;
     z-index: 1;
 
     button {
@@ -18,5 +19,43 @@
   .renderer-container {
     height: 100%;
     width: 100%;
+  }
+
+  .mode-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: space-between;
+    top: 0;
+    left: 0;
+    position: absolute;
+    padding: 6px;
+
+    .mode-buttons {
+      button {
+        margin: 2px;
+      }
+    }
+  }
+
+  .view-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: space-between;
+    bottom: 0;
+    right: 0;
+    position: absolute;
+    padding: 16px;
+
+    .zoom-text {
+      padding-left: 8px;
+      color: white;
+      text-align: left;
+    }
+
+    .zoom-buttons {
+      button {
+        margin: 2px;
+      }
+    }
   }
 }

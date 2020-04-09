@@ -4,7 +4,7 @@ import '../polyfills';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NgModule } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { CoreModule } from './core/core.module';
 import { SharedModule } from './shared/shared.module';
@@ -24,6 +24,9 @@ import { BuildWindowComponent } from './elevation/build-window/build-window.comp
 import { BuildLibraryComponent } from './elevation/build-library/build-library.component';
 import { DeviceEditorComponent } from './elevation/device-editor/device-editor.component';
 import { BuildWindowSimpleComponent } from './elevation/build-window/build-window-simple/build-window-simple.component';
+import { CabinetEditorComponent } from './elevation/device-editor/cabinet-editor/cabinet-editor.component';
+import { PopulatorEditorComponent } from './elevation/device-editor/populator-editor/populator-editor.component';
+import { CableEditorComponent } from './elevation/device-editor/cable-editor/cable-editor.component';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
@@ -37,12 +40,16 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
     BuildWindowComponent,
     BuildLibraryComponent,
     DeviceEditorComponent,
-    BuildWindowSimpleComponent
+    BuildWindowSimpleComponent,
+    CabinetEditorComponent,
+    PopulatorEditorComponent,
+    CableEditorComponent
   ],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
     FormsModule,
+    ReactiveFormsModule,
     HttpClientModule,
     CoreModule,
     SharedModule,
