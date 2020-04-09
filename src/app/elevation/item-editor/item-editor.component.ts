@@ -2,11 +2,11 @@ import { Component } from '@angular/core';
 import { ElevationService } from '../elevation.service';
 
 @Component({
-  selector: 'app-device-editor',
-  templateUrl: './device-editor.component.html',
-  styleUrls: ['./device-editor.component.scss']
+  selector: 'app-item-editor',
+  templateUrl: './item-editor.component.html',
+  styleUrls: ['./item-editor.component.scss']
 })
-export class DeviceEditorComponent {
+export class ItemEditorComponent {
   activeItem = this.elevationService.activeItem;
 
   constructor(private elevationService: ElevationService) {}

@@ -36,14 +36,14 @@ export class ElevationService {
         this.currentProject.next({
           elevations: [
             {
-              cabinet: createCabinet(42, {
+              cabinet: createCabinet('Rack 1', 42, {
                 width: 23.63,
                 height: 78.5,
                 depth: 43
               })
             },
             {
-              cabinet: createCabinet(42, {
+              cabinet: createCabinet('Rack 2', 42, {
                 width: 23.63,
                 height: 78.5,
                 depth: 43
@@ -91,6 +91,19 @@ export class ElevationService {
             elevations,
             activeItem: { ...currentState.activeItem, item: updatedRU }
           };
+        }),
+        take(1)
+      )
+      .toPromise();
+
+    this.updateState(newState);
+  }
+
+  async unsetActive() {
+    const newState = await this.currentProject
+      .pipe(
+        map(currentState => {
+          return { ...currentState, activeItem: undefined };
         }),
         take(1)
       )

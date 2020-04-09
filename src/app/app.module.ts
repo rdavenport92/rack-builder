@@ -15,18 +15,17 @@ import { AppRoutingModule } from './app-routing.module';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
-import { HomeModule } from './home/home.module';
-
 import { AppComponent } from './app.component';
 import { MaterialDepsModule } from './shared/modules/material-deps.module';
 import { ElevationComponent } from './elevation/elevation.component';
 import { BuildWindowComponent } from './elevation/build-window/build-window.component';
-import { BuildLibraryComponent } from './elevation/build-library/build-library.component';
-import { DeviceEditorComponent } from './elevation/device-editor/device-editor.component';
+import { SettingsComponent } from './elevation/settings/settings.component';
+import { ItemEditorComponent } from './elevation/item-editor/item-editor.component';
 import { BuildWindowSimpleComponent } from './elevation/build-window/build-window-simple/build-window-simple.component';
-import { CabinetEditorComponent } from './elevation/device-editor/cabinet-editor/cabinet-editor.component';
-import { PopulatorEditorComponent } from './elevation/device-editor/populator-editor/populator-editor.component';
-import { CableEditorComponent } from './elevation/device-editor/cable-editor/cable-editor.component';
+import { CabinetEditorComponent } from './elevation/item-editor/cabinet-editor/cabinet-editor.component';
+import { PopulatorEditorComponent } from './elevation/item-editor/populator-editor/populator-editor.component';
+import { CableEditorComponent } from './elevation/item-editor/cable-editor/cable-editor.component';
+import { MainPanelComponent } from './elevation/item-editor/main-panel/main-panel.component';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
@@ -38,12 +37,13 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
     AppComponent,
     ElevationComponent,
     BuildWindowComponent,
-    BuildLibraryComponent,
-    DeviceEditorComponent,
+    SettingsComponent,
+    ItemEditorComponent,
     BuildWindowSimpleComponent,
     CabinetEditorComponent,
     PopulatorEditorComponent,
-    CableEditorComponent
+    CableEditorComponent,
+    MainPanelComponent,
   ],
   imports: [
     BrowserModule,
@@ -53,18 +53,17 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
     HttpClientModule,
     CoreModule,
     SharedModule,
-    HomeModule,
     AppRoutingModule,
     MaterialDepsModule,
     TranslateModule.forRoot({
       loader: {
         provide: TranslateLoader,
         useFactory: HttpLoaderFactory,
-        deps: [HttpClient]
-      }
-    })
+        deps: [HttpClient],
+      },
+    }),
   ],
   providers: [],
-  bootstrap: [AppComponent]
+  bootstrap: [AppComponent],
 })
 export class AppModule {}

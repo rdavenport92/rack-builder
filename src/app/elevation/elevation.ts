@@ -2,9 +2,13 @@ import { v4 } from 'uuid';
 
 export interface Project {
   elevations: Elevation[];
-  activeItem:
-    | { type: string; parentId: string; item: Cabinet | RUData }
-    | undefined;
+  activeItem: ActiveItem | undefined;
+}
+
+export interface ActiveItem {
+  type: string;
+  parentId: string;
+  item: Cabinet | RUData;
 }
 
 export interface Elevation {
@@ -13,6 +17,7 @@ export interface Elevation {
 
 export interface Cabinet {
   id: string;
+  name: string;
   ruCount: number;
   dimensions: RackDimensions;
   railDepth: number;
@@ -91,16 +96,17 @@ export enum ObjectType {
 }
 
 export function createCabinet(
+  name: string,
   ruCount: number,
   dimensions: RackDimensions,
-  railDepth: number = 0,
-  openingOffset: number | undefined = undefined
+  railDepth?: number | undefined,
+  openingOffset?: number | undefined
 ): Cabinet {
+  railDepth = railDepth || 0;
+  openingOffset = openingOffset || (dimensions.height - ruCount * 1.75) / 2;
+
   const id = v4();
-  if (openingOffset === undefined) {
-    // centering the cabinet opening
-    openingOffset = (dimensions.height - ruCount * 1.75) / 2;
-  }
+
   // creating RUs
   const ruData: RUData[] = [];
   for (let i = 0; i < ruCount; i++) {
@@ -111,6 +117,7 @@ export function createCabinet(
     });
   }
   return {
+    name,
     id,
     ruCount,
     dimensions,

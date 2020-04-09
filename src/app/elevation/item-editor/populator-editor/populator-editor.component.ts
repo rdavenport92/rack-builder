@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ElevationService } from '../../elevation.service';
-import { map, tap } from 'rxjs/operators';
+import { map, tap, filter } from 'rxjs/operators';
 import { RUData } from '../../elevation';
 import { FormBuilder } from '@angular/forms';
 
@@ -10,7 +10,10 @@ import { FormBuilder } from '@angular/forms';
   styleUrls: ['./populator-editor.component.scss']
 })
 export class PopulatorEditorComponent {
-  currentRU = this.elevationService.activeItem.pipe(map(item => item.item));
+  currentRU = this.elevationService.activeItem.pipe(
+    filter(item => !!item),
+    map(item => item.item)
+  );
   ruLocation = this.currentRU.pipe(map((ru: RUData) => ru.location));
 
   selectedPopulator = this.fb.control({});

@@ -8,6 +8,7 @@
         <app-populator-editor *ngIf="item.type === 'ru'"></app-populator-editor>
         <app-cable-editor *ngIf="item.type === 'port'"></app-cable-editor>
       </ng-container>
+      <app-main-panel *ngIf="!(activeItem | async)"></app-main-panel>
     </mat-card-content>
   </mat-card>
 </div>

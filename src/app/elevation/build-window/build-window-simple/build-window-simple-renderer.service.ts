@@ -1,10 +1,5 @@
-import {
-  Injectable,
-  OnDestroy,
-  ChangeDetectorRef,
-  NgZone
-} from '@angular/core';
-import { Elevation, Cabinet, Project, ObjectType } from '../../elevation';
+import { Injectable, OnDestroy } from '@angular/core';
+import { Project, ObjectType } from '../../elevation';
 import { ElevationService } from '../../elevation.service';
 import { BehaviorSubject, combineLatest } from 'rxjs';
 import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
@@ -12,12 +7,12 @@ import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
 export enum EditMode {
   CAB = 'cabinet',
   DEVICE = 'device',
-  INTEGRATE = 'integrate'
+  INTEGRATE = 'integrate',
 }
 
 enum CabMode {
   SINGLE = 'single',
-  MULTI = 'multi'
+  MULTI = 'multi',
 }
 
 interface RendererSettings {
@@ -32,12 +27,12 @@ const initialSettings: RendererSettings = {
   scale: 0,
   editMode: {
     mode: EditMode.CAB,
-    cabMode: CabMode.MULTI
-  }
+    cabMode: CabMode.MULTI,
+  },
 };
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class BuildWindowSimpleRendererService implements OnDestroy {
   private pixelsPerInch = 96; // probably will want to calculate this in main process to be more accurate per device
@@ -49,7 +44,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
   renderProject = combineLatest([
     this.canvas,
     this.projectState,
-    this.rendererSettings
+    this.rendererSettings,
   ]).pipe(
     filter(([canvas, update, _settings]) => !!canvas && !!update),
     tap(([canvas, update, settings]) =>
@@ -59,7 +54,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
 
   constructor(private elevationService: ElevationService) {
     this.renderProject.subscribe();
-    window.addEventListener('keydown', e => this.registerHotkeys(e));
+    window.addEventListener('keydown', (e) => this.registerHotkeys(e));
   }
 
   ngOnDestroy() {
@@ -82,6 +77,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         break;
       case 189: // -
         this.zoom(-0.01);
+        break;
+      case 27: // escape
+        this.unsetActive();
         break;
       default:
         break;
@@ -109,7 +107,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       // cabinets and get an idea for what the initial scale needs to be.
       const tempSettings = {
         ...settings,
-        scale: 0.01
+        scale: 0.01,
       };
       this.drawCabinets(update, tempSettings);
       // by this point, the canvas will contain accurate dimensions which will allow us to set
@@ -120,8 +118,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         scale: newScale,
         editMode: {
           ...settings.editMode,
-          cabMode: update.elevations.length > 1 ? CabMode.MULTI : CabMode.SINGLE
-        }
+          cabMode:
+            update.elevations.length > 1 ? CabMode.MULTI : CabMode.SINGLE,
+        },
       });
     } else if (!!settings.scale && !!canvas && !!update) {
       this.drawCabinets(update, settings);
@@ -134,7 +133,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
 
     const scene = document.getElementById('scene');
 
-    const cabinets = project.elevations.map(ele => ele.cabinet);
+    const cabinets = project.elevations.map((ele) => ele.cabinet);
 
     for (let i = 0; i < cabinets.length; i++) {
       const cabinet = cabinets[i];
@@ -164,7 +163,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         cabElement.style.margin = `${4 * ppi * scale}px`;
         // handling mode
         if (settings.editMode.mode === EditMode.CAB) {
-          cabElement.onclick = event => this.selectItem(event);
+          cabElement.onclick = (event) => this.selectItem(event);
           cabElement.classList.add('active-mode');
         }
         // handling if active
@@ -181,13 +180,12 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         cabinetOpening.id = `${cabinet.id}-opening`;
         cabinetOpening.classList.add('cabinet-opening');
         cabinetOpening.style.width = `${19 * ppi * scale}px`;
-        cabinetOpening.style.height = `${cabinet.ruCount *
-          1.75 *
-          ppi *
-          scale}px`;
-        cabinetOpening.style.bottom = `${cabinet.openingOffset *
-          ppi *
-          scale}px`;
+        cabinetOpening.style.height = `${
+          cabinet.ruCount * 1.75 * ppi * scale
+        }px`;
+        cabinetOpening.style.bottom = `${
+          cabinet.openingOffset * ppi * scale
+        }px`;
         cabinetOpening.style.pointerEvents = 'none';
 
         // drawing ru's
@@ -213,7 +211,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           // handling mode
           if (settings.editMode.mode === EditMode.DEVICE) {
             ruElement.style.pointerEvents = 'auto';
-            ruElement.onclick = event => this.selectItem(event);
+            ruElement.onclick = (event) => this.selectItem(event);
             ruElement.classList.add('active-mode');
           } else {
             ruElement.style.pointerEvents = 'none';
@@ -242,7 +240,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
     const item = { id, type };
     const newState = await this.elevationService.currentProject
       .pipe(
-        map(currentState => {
+        map((currentState) => {
           const activeItem = this.getActiveItem(item, currentState);
           return { ...currentState, activeItem };
         }),
@@ -257,14 +255,16 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
     switch (item.type) {
       case ObjectType.CAB:
         const cabinet = project.elevations.filter(
-          ele => ele.cabinet.id === item.id
+          (ele) => ele.cabinet.id === item.id
         )[0].cabinet;
         return { type: item.type, item: cabinet, parentId: cabinet.id };
       case ObjectType.RU:
-        const parentRack = project.elevations.filter(ele =>
+        const parentRack = project.elevations.filter((ele) =>
           item.id.startsWith(ele.cabinet.id)
         )[0].cabinet;
-        const selectedRU = parentRack.ruData.filter(ru => ru.id === item.id)[0];
+        const selectedRU = parentRack.ruData.filter(
+          (ru) => ru.id === item.id
+        )[0];
         return { type: item.type, item: selectedRU, parentId: parentRack.id };
       default:
         break;
@@ -301,8 +301,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
             ...currentSettings,
             editMode: {
               ...currentSettings.editMode,
-              mode: newEditMode
-            }
+              mode: newEditMode,
+            },
           };
         } else {
           if (
@@ -314,8 +314,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
               ...currentSettings,
               editMode: {
                 ...currentSettings.editMode,
-                cabMode
-              }
+                cabMode,
+              },
             };
           } else if (
             currentSettings.editMode.cabMode === CabMode.MULTI &&
@@ -326,8 +326,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
               ...currentSettings,
               editMode: {
                 ...currentSettings.editMode,
-                cabMode
-              }
+                cabMode,
+              },
             };
           }
         }
@@ -339,8 +339,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           ...currentSettings,
           editMode: {
             ...currentSettings.editMode,
-            mode: newEditMode
-          }
+            mode: newEditMode,
+          },
         };
       } else if (
         newEditMode === EditMode.INTEGRATE &&
@@ -350,8 +350,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           ...currentSettings,
           editMode: {
             ...currentSettings.editMode,
-            mode: newEditMode
-          }
+            mode: newEditMode,
+          },
         };
       }
 
@@ -362,9 +362,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       | RendererSettings
       | undefined = await this.rendererSettings
       .pipe(
-        switchMap(currentSettings =>
+        switchMap((currentSettings) =>
           this.projectState.pipe(
-            map(project => handleEditModeUpdate(currentSettings, project))
+            map((project) => handleEditModeUpdate(currentSettings, project))
           )
         ),
         take(1)
@@ -379,18 +379,22 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
   async zoom(amount: number) {
     const newSettings = await this.rendererSettings
       .pipe(
-        map(currentSettings => {
+        map((currentSettings) => {
           let scale =
             Math.round(currentSettings.scale * 100 + amount * 100) / 100;
           scale = scale > 0.01 ? scale : 0.01;
           return {
             ...currentSettings,
-            scale
+            scale,
           };
         }),
         take(1)
       )
       .toPromise();
     this.rendererSettings.next(newSettings);
+  }
+
+  unsetActive() {
+    this.elevationService.unsetActive();
   }
 }
