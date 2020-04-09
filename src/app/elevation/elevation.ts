@@ -2,7 +2,7 @@ import { v4 } from 'uuid';
 
 export interface Project {
   elevations: Elevation[];
-  activeItem: ActiveItem | undefined;
+  activeItems: ActiveItem[];
 }
 
 export interface ActiveItem {
@@ -48,7 +48,7 @@ export interface Populator {
 export enum DeviceType {
   SWITCH = 'switch',
   ROUTER = 'router',
-  FIREWALL = 'firewall'
+  FIREWALL = 'firewall',
 }
 
 export interface Device extends Populator {
@@ -71,7 +71,7 @@ export interface PortGroup {
 export enum PortType {
   ETH = 'ethernet',
   SFP = 'sfp',
-  QSFP = 'qsfp'
+  QSFP = 'qsfp',
 }
 
 export interface Port {
@@ -83,7 +83,7 @@ export interface Port {
 export enum AccessoryType {
   BLANK = 'blank',
   BRUSH = 'brush',
-  DRING = 'dring'
+  DRING = 'dring',
 }
 
 export interface Accessory extends Populator {
@@ -92,7 +92,7 @@ export interface Accessory extends Populator {
 
 export enum ObjectType {
   CAB = 'cabinet',
-  RU = 'ru'
+  RU = 'ru',
 }
 
 export function createCabinet(
@@ -113,7 +113,7 @@ export function createCabinet(
     ruData.push({
       id: `${id}-ru-${i + 1}`,
       location: `${i + 1}`,
-      populator: undefined
+      populator: undefined,
     });
   }
   return {
@@ -123,7 +123,7 @@ export function createCabinet(
     dimensions,
     railDepth,
     openingOffset,
-    ruData
+    ruData,
   };
 }
 
@@ -133,7 +133,7 @@ export const SAMPLE_SWITCH: Device = {
   type: DeviceType.SWITCH,
   portGroups: [],
   location: 'front',
-  ruSpan: 1
+  ruSpan: 1,
 };
 
 export const SAMPLE_SWITCH2: Device = {
@@ -142,7 +142,7 @@ export const SAMPLE_SWITCH2: Device = {
   type: DeviceType.SWITCH,
   portGroups: [],
   location: 'front',
-  ruSpan: 2
+  ruSpan: 2,
 };
 
 export const SAMPLE_SWITCH3: Device = {
@@ -151,11 +151,11 @@ export const SAMPLE_SWITCH3: Device = {
   type: DeviceType.SWITCH,
   portGroups: [],
   location: 'front',
-  ruSpan: 6
+  ruSpan: 6,
 };
 
 export const SAMPLE_DEVICE_LIBRARY: Device[] = [
   SAMPLE_SWITCH,
   SAMPLE_SWITCH2,
-  SAMPLE_SWITCH3
+  SAMPLE_SWITCH3,
 ];

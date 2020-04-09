@@ -1,4 +1,4 @@
-<div>RU{{ ruLocation | async }}</div>
+<div>RU{{ ruLocation }}</div>
 <mat-form-field>
   <mat-label>
     Select Item
@@ -12,7 +12,7 @@
   </mat-select>
 </mat-form-field>
 <button mat-raised-button color="primary" (click)="updateRU()">Save</button>
-{{ currentRU | async | json }}
+{{ currentRU | json }}
 <br />
 <div>
   {{ selectedPopulator.value | json }}

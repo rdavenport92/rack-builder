@@ -4,10 +4,10 @@ import { ElevationService } from '../elevation.service';
 @Component({
   selector: 'app-item-editor',
   templateUrl: './item-editor.component.html',
-  styleUrls: ['./item-editor.component.scss']
+  styleUrls: ['./item-editor.component.scss'],
 })
 export class ItemEditorComponent {
-  activeItem = this.elevationService.activeItem;
+  activeItems = this.elevationService.activeItems;
 
   constructor(private elevationService: ElevationService) {}
 }

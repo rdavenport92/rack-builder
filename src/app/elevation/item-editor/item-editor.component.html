@@ -1,14 +1,19 @@
 <div class="device-editor-wrapper">
   <mat-card class="device-editor-card">
     <mat-card-content>
-      <ng-container *ngIf="activeItem | async as item">
-        <app-cabinet-editor
-          *ngIf="item.type === 'cabinet'"
-        ></app-cabinet-editor>
-        <app-populator-editor *ngIf="item.type === 'ru'"></app-populator-editor>
-        <app-cable-editor *ngIf="item.type === 'port'"></app-cable-editor>
+      <ng-container *ngIf="activeItems | async as items">
+        <app-main-panel *ngIf="!items.length"></app-main-panel>
+        <ng-container *ngIf="items.length === 1">
+          <app-cabinet-editor
+            *ngIf="items[0].type === 'cabinet'"
+          ></app-cabinet-editor>
+          <app-populator-editor
+            *ngIf="items[0].type === 'ru'"
+            [_activeItem]="items[0]"
+          ></app-populator-editor>
+          <app-cable-editor *ngIf="items[0].type === 'port'"></app-cable-editor>
+        </ng-container>
       </ng-container>
-      <app-main-panel *ngIf="!(activeItem | async)"></app-main-panel>
     </mat-card-content>
   </mat-card>
 </div>

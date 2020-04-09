@@ -147,8 +147,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       if (
         settings.editMode.cabMode === CabMode.MULTI ||
         (settings.editMode.cabMode === CabMode.SINGLE &&
-          project.activeItem &&
-          project.activeItem.parentId === cabinet.id) ||
+          !!project.activeItems.length &&
+          !!project.activeItems.filter((item) => item.parentId === cabinet.id)
+            .length) ||
         project.elevations.length === 1
       ) {
         const { width, height } = cabinet.dimensions;
@@ -168,9 +169,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         }
         // handling if active
         if (
-          !!project.activeItem &&
-          project.activeItem.type === ObjectType.CAB &&
-          project.activeItem.item.id === cabinet.id
+          !!project.activeItems.length &&
+          !!project.activeItems.filter((item) => item.item.id === cabinet.id)
+            .length
         ) {
           cabElement.classList.add('active-object');
         }
@@ -218,9 +219,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           }
           // handling if active
           if (
-            !!project.activeItem &&
-            project.activeItem.type === ObjectType.RU &&
-            project.activeItem.item.id === ru.id
+            !!project.activeItems.length &&
+            !!project.activeItems.filter((item) => item.item.id === ru.id)
+              .length
           ) {
             ruElement.classList.add('active-object');
           }
@@ -235,19 +236,36 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
   }
 
   private async selectItem(event: MouseEvent) {
+    const append = event.ctrlKey;
+    // TODO: need to check if ctrl pressed
+    // if so, continue to add to array
+    // if not, need to overwrite the array
     const id = (event.target as any).id;
     const type = (event.target as any).dataset.type;
     const item = { id, type };
     const newState = await this.elevationService.currentProject
       .pipe(
         map((currentState) => {
-          const activeItem = this.getActiveItem(item, currentState);
-          return { ...currentState, activeItem };
+          if (
+            !!currentState.activeItems.filter((item) => item.item.id === id)
+              .length
+          ) {
+            // unset active object if is active already
+            const activeItems = currentState.activeItems.filter(
+              (item) => item.item.id !== id
+            );
+            return { ...currentState, activeItems };
+          } else {
+            const activeItem = this.getActiveItem(item, currentState);
+            const activeItems = append
+              ? [...currentState.activeItems, activeItem]
+              : [activeItem];
+            return { ...currentState, activeItems };
+          }
         }),
         take(1)
       )
       .toPromise();
-
     this.elevationService.updateState(newState);
   }
 
@@ -319,7 +337,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
             };
           } else if (
             currentSettings.editMode.cabMode === CabMode.MULTI &&
-            project.activeItem
+            project.activeItems.filter((item) => item.type === ObjectType.CAB)
+              .length === 1
           ) {
             const cabMode = CabMode.SINGLE;
             newSettings = {

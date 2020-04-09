@@ -1,30 +1,28 @@
 import { Injectable, NgZone } from '@angular/core';
 
-import { ThreeService } from '../core/services/three/three.service';
 import {
-  Elevation,
   createCabinet,
   Project,
-  ObjectType,
   SAMPLE_DEVICE_LIBRARY,
   Device,
   Accessory,
-  RUData
+  RUData,
+  ActiveItem,
 } from './elevation';
-import { BehaviorSubject, combineLatest, of } from 'rxjs';
-import { filter, map, tap, take, shareReplay } from 'rxjs/operators';
+import { BehaviorSubject, of } from 'rxjs';
+import { map, take, shareReplay } from 'rxjs/operators';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ElevationService {
   currentProject = new BehaviorSubject<Project>({
     elevations: [],
-    activeItem: undefined
+    activeItems: undefined,
   });
 
-  activeItem = this.currentProject.pipe(
-    map(state => state.activeItem),
+  activeItems = this.currentProject.pipe(
+    map((state) => state.activeItems),
     shareReplay(1)
   );
 
@@ -39,18 +37,18 @@ export class ElevationService {
               cabinet: createCabinet('Rack 1', 42, {
                 width: 23.63,
                 height: 78.5,
-                depth: 43
-              })
+                depth: 43,
+              }),
             },
             {
               cabinet: createCabinet('Rack 2', 42, {
                 width: 23.63,
                 height: 78.5,
-                depth: 43
-              })
-            }
+                depth: 43,
+              }),
+            },
           ],
-          activeItem: undefined
+          activeItems: [],
         }),
       0
     );
@@ -60,36 +58,43 @@ export class ElevationService {
     this.zone.run(() => this.currentProject.next({ ...newState }));
   }
 
-  async updateRU(populator: Device | Accessory) {
+  async updateRU(populator: Device | Accessory, activeItem: ActiveItem) {
     const newState = await this.currentProject
       .pipe(
-        map(currentState => {
+        map((currentState) => {
+          // creating the updated RU
           const updatedRU: RUData = {
-            ...(currentState.activeItem.item as RUData),
-            populator
+            ...(activeItem.item as RUData),
+            populator,
           };
-          const elevations = currentState.elevations.map(ele => {
-            if (ele.cabinet.id === currentState.activeItem.parentId) {
-              const updatedRUData = ele.cabinet.ruData.map(ru => {
-                if (
-                  ru.location ===
-                  (currentState.activeItem.item as RUData).location
-                ) {
+
+          // updating the elevations
+          const elevations = currentState.elevations.map((ele) => {
+            if (ele.cabinet.id === activeItem.parentId) {
+              const updatedRUData = ele.cabinet.ruData.map((ru) => {
+                if (ru.location === (activeItem.item as RUData).location) {
                   return updatedRU;
                 }
                 return ru;
               });
               return {
                 ...ele,
-                cabinet: { ...ele.cabinet, ruData: updatedRUData }
+                cabinet: { ...ele.cabinet, ruData: updatedRUData },
               };
             }
             return ele;
           });
+
+          // updating the active item
+          const withoutOldActiveItem = currentState.activeItems.filter(
+            (item) => item.item.id !== activeItem.item.id
+          );
+          const newActiveItem = { ...activeItem, item: updatedRU };
+          const updatedActiveItems = [...withoutOldActiveItem, newActiveItem];
           return {
             ...currentState,
             elevations,
-            activeItem: { ...currentState.activeItem, item: updatedRU }
+            activeItems: updatedActiveItems,
           };
         }),
         take(1)
@@ -100,10 +105,10 @@ export class ElevationService {
   }
 
   async unsetActive() {
-    const newState = await this.currentProject
+    const newState: Project = await this.currentProject
       .pipe(
-        map(currentState => {
-          return { ...currentState, activeItem: undefined };
+        map((currentState) => {
+          return { ...currentState, activeItems: [] };
         }),
         take(1)
       )
