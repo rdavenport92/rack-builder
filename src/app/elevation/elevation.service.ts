@@ -7,18 +7,18 @@ import {
   Device,
   Accessory,
   RUData,
-  ActiveItem,
+  ItemRef
 } from './elevation';
 import { BehaviorSubject, of } from 'rxjs';
 import { map, take, shareReplay } from 'rxjs/operators';
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class ElevationService {
   currentProject = new BehaviorSubject<Project>({
     elevations: [],
-    activeItems: undefined,
+    activeItems: undefined
   });
 
   activeItems = this.currentProject.pipe(
@@ -37,18 +37,18 @@ export class ElevationService {
               cabinet: createCabinet('Rack 1', 42, {
                 width: 23.63,
                 height: 78.5,
-                depth: 43,
-              }),
+                depth: 43
+              })
             },
             {
               cabinet: createCabinet('Rack 2', 42, {
                 width: 23.63,
                 height: 78.5,
-                depth: 43,
-              }),
-            },
+                depth: 43
+              })
+            }
           ],
-          activeItems: [],
+          activeItems: []
         }),
       0
     );
@@ -58,28 +58,31 @@ export class ElevationService {
     this.zone.run(() => this.currentProject.next({ ...newState }));
   }
 
-  async updateRU(populator: Device | Accessory, activeItem: ActiveItem) {
+  async updateRU(populator: Device | Accessory, activeItem: ItemRef) {
     const newState = await this.currentProject
       .pipe(
         map((currentState) => {
           // creating the updated RU
+          const currentRU = currentState.elevations
+            .filter((ele) => ele.cabinet.id === activeItem.parentId)[0]
+            .cabinet.ruData.filter((ru) => ru.id === activeItem.itemId)[0];
           const updatedRU: RUData = {
-            ...(activeItem.item as RUData),
-            populator,
+            ...currentRU,
+            populator
           };
 
           // updating the elevations
           const elevations = currentState.elevations.map((ele) => {
             if (ele.cabinet.id === activeItem.parentId) {
               const updatedRUData = ele.cabinet.ruData.map((ru) => {
-                if (ru.location === (activeItem.item as RUData).location) {
+                if (ru.location === currentRU.location) {
                   return updatedRU;
                 }
                 return ru;
               });
               return {
                 ...ele,
-                cabinet: { ...ele.cabinet, ruData: updatedRUData },
+                cabinet: { ...ele.cabinet, ruData: updatedRUData }
               };
             }
             return ele;
@@ -87,14 +90,14 @@ export class ElevationService {
 
           // updating the active item
           const withoutOldActiveItem = currentState.activeItems.filter(
-            (item) => item.item.id !== activeItem.item.id
+            (item) => item.itemId !== activeItem.itemId
           );
           const newActiveItem = { ...activeItem, item: updatedRU };
           const updatedActiveItems = [...withoutOldActiveItem, newActiveItem];
           return {
             ...currentState,
             elevations,
-            activeItems: updatedActiveItems,
+            activeItems: updatedActiveItems
           };
         }),
         take(1)

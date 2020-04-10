@@ -9,7 +9,7 @@
           ></app-cabinet-editor>
           <app-populator-editor
             *ngIf="items[0].type === 'ru'"
-            [_activeItem]="items[0]"
+            [activeItemRef]="items[0]"
           ></app-populator-editor>
           <app-cable-editor *ngIf="items[0].type === 'port'"></app-cable-editor>
         </ng-container>

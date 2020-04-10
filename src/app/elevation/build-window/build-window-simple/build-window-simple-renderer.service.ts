@@ -1,50 +1,54 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { Project, ObjectType } from '../../elevation';
+import { Project, ObjectType, ItemRef, RUData } from '../../elevation';
 import { ElevationService } from '../../elevation.service';
 import { BehaviorSubject, combineLatest } from 'rxjs';
 import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
 
 export enum EditMode {
   CAB = 'cabinet',
-  DEVICE = 'device',
-  INTEGRATE = 'integrate',
+  RU = 'ru',
+  INTEGRATE = 'integrate'
 }
 
-enum CabMode {
+enum ModeView {
   SINGLE = 'single',
-  MULTI = 'multi',
+  MULTI = 'multi'
 }
 
-interface RendererSettings {
+interface SessionState {
   scale: number;
   editMode: {
     mode: EditMode;
-    cabMode: CabMode;
+    cabView: ModeView;
+    ruView: ModeView;
+    singleModeObject: ItemRef | undefined;
   };
 }
 
-const initialSettings: RendererSettings = {
+const initialSessionState: SessionState = {
   scale: 0,
   editMode: {
     mode: EditMode.CAB,
-    cabMode: CabMode.MULTI,
-  },
+    cabView: ModeView.MULTI,
+    ruView: ModeView.MULTI,
+    singleModeObject: undefined
+  }
 };
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class BuildWindowSimpleRendererService implements OnDestroy {
   private pixelsPerInch = 96; // probably will want to calculate this in main process to be more accurate per device
 
   canvas = new BehaviorSubject(undefined);
   projectState = this.elevationService.currentProject.pipe(shareReplay(1));
-  rendererSettings = new BehaviorSubject(initialSettings);
+  sessionState = new BehaviorSubject(initialSessionState);
 
   renderProject = combineLatest([
     this.canvas,
     this.projectState,
-    this.rendererSettings,
+    this.sessionState
   ]).pipe(
     filter(([canvas, update, _settings]) => !!canvas && !!update),
     tap(([canvas, update, settings]) =>
@@ -67,7 +71,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         this.changeEditMode(EditMode.CAB);
         break;
       case 98: // Numpad2
-        this.changeEditMode(EditMode.DEVICE);
+        this.changeEditMode(EditMode.RU);
         break;
       case 99: // Numpad3
         this.changeEditMode(EditMode.INTEGRATE);
@@ -100,138 +104,170 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
   private renderUpdate(
     canvas: HTMLElement,
     update: Project,
-    settings: RendererSettings
+    settings: SessionState
   ) {
     if (!settings.scale && !!canvas && !!update.elevations.length) {
       // scale has not been set yet - setting temp scale to 0.01 so that we can draw
       // cabinets and get an idea for what the initial scale needs to be.
       const tempSettings = {
         ...settings,
-        scale: 0.01,
+        scale: 0.01
       };
-      this.drawCabinets(update, tempSettings);
+      this.drawScene(update, tempSettings);
       // by this point, the canvas will contain accurate dimensions which will allow us to set
       // a more appropriate initial scale based on the dimensions of the entire scene
       const newScale = this.calculateScale(canvas);
-      this.rendererSettings.next({
+      this.sessionState.next({
         ...settings,
         scale: newScale,
         editMode: {
           ...settings.editMode,
-          cabMode:
-            update.elevations.length > 1 ? CabMode.MULTI : CabMode.SINGLE,
-        },
+          cabView:
+            update.elevations.length > 1 ? ModeView.MULTI : ModeView.SINGLE
+        }
       });
     } else if (!!settings.scale && !!canvas && !!update) {
-      this.drawCabinets(update, settings);
+      this.drawScene(update, settings);
     }
   }
 
-  private drawCabinets(project: Project, settings: RendererSettings) {
+  private drawScene(project: Project, sessionState: SessionState) {
     const ppi = this.pixelsPerInch;
-    const scale = settings.scale;
+    const scale = sessionState.scale;
 
     const scene = document.getElementById('scene');
+    scene.innerHTML = '';
 
-    const cabinets = project.elevations.map((ele) => ele.cabinet);
+    if (sessionState.editMode.ruView !== ModeView.SINGLE) {
+      const cabinets = project.elevations.map((ele) => ele.cabinet);
 
-    for (let i = 0; i < cabinets.length; i++) {
-      const cabinet = cabinets[i];
+      for (let i = 0; i < cabinets.length; i++) {
+        const cabinet = cabinets[i];
 
-      // clean slate
-      let cabElement = document.getElementById(`${cabinet.id}`);
-      if (cabElement) {
-        scene.removeChild(cabElement);
-      }
-
-      if (
-        settings.editMode.cabMode === CabMode.MULTI ||
-        (settings.editMode.cabMode === CabMode.SINGLE &&
-          !!project.activeItems.length &&
-          !!project.activeItems.filter((item) => item.parentId === cabinet.id)
-            .length) ||
-        project.elevations.length === 1
-      ) {
-        const { width, height } = cabinet.dimensions;
-
-        // drawing cabinet
-        cabElement = document.createElement('div');
-        cabElement.id = cabinet.id;
-        cabElement.setAttribute('data-type', ObjectType.CAB);
-        cabElement.classList.add('cabinet');
-        cabElement.style.width = `${width * ppi * scale}px`;
-        cabElement.style.height = `${height * ppi * scale}px`;
-        cabElement.style.margin = `${4 * ppi * scale}px`;
-        // handling mode
-        if (settings.editMode.mode === EditMode.CAB) {
-          cabElement.onclick = (event) => this.selectItem(event);
-          cabElement.classList.add('active-mode');
-        }
-        // handling if active
         if (
-          !!project.activeItems.length &&
-          !!project.activeItems.filter((item) => item.item.id === cabinet.id)
-            .length
+          sessionState.editMode.cabView === ModeView.MULTI ||
+          (sessionState.editMode.cabView === ModeView.SINGLE &&
+            cabinet.id === sessionState.editMode.singleModeObject.parentId)
         ) {
-          cabElement.classList.add('active-object');
-        }
+          const { width, height } = cabinet.dimensions;
 
-        // drawing cabinet opening
-        const cabinetOpening = document.createElement('div');
-        cabinetOpening.id = `${cabinet.id}-opening`;
-        cabinetOpening.classList.add('cabinet-opening');
-        cabinetOpening.style.width = `${19 * ppi * scale}px`;
-        cabinetOpening.style.height = `${
-          cabinet.ruCount * 1.75 * ppi * scale
-        }px`;
-        cabinetOpening.style.bottom = `${
-          cabinet.openingOffset * ppi * scale
-        }px`;
-        cabinetOpening.style.pointerEvents = 'none';
-
-        // drawing ru's
-        let ruSpan = 0;
-        for (let i = 0; i < cabinet.ruCount; i++) {
-          if (ruSpan) {
-            // handling rendering a devices RU span
-            ruSpan += -1;
-            continue;
-          }
-          const ru = cabinet.ruData[i];
-          const ruElement = document.createElement('div');
-          ruElement.id = cabinet.ruData[i].id;
-          ruElement.setAttribute('data-type', ObjectType.RU);
-          ruElement.classList.add('ru');
-          // handling if populated
-          if (ru.populator) {
-            ruSpan = ru.populator.ruSpan - 1;
-            ruElement.style.flex = `${ru.populator.ruSpan}`;
-            ruElement.style.backgroundColor = `#555555`;
-            ruElement.innerText = ru.populator.name;
-          }
+          // drawing cabinet
+          const cabElement = document.createElement('div');
+          cabElement.id = cabinet.id;
+          cabElement.setAttribute('data-type', ObjectType.CAB);
+          cabElement.classList.add('cabinet');
+          cabElement.style.width = `${width * ppi * scale}px`;
+          cabElement.style.height = `${height * ppi * scale}px`;
+          cabElement.style.margin = `${4 * ppi * scale}px`;
           // handling mode
-          if (settings.editMode.mode === EditMode.DEVICE) {
-            ruElement.style.pointerEvents = 'auto';
-            ruElement.onclick = (event) => this.selectItem(event);
-            ruElement.classList.add('active-mode');
-          } else {
-            ruElement.style.pointerEvents = 'none';
+          if (sessionState.editMode.mode === EditMode.CAB) {
+            cabElement.onclick = (event) => this.selectItem(event);
+            cabElement.classList.add('active-mode');
           }
           // handling if active
           if (
             !!project.activeItems.length &&
-            !!project.activeItems.filter((item) => item.item.id === ru.id)
+            !!project.activeItems.filter((item) => item.itemId === cabinet.id)
               .length
           ) {
-            ruElement.classList.add('active-object');
+            cabElement.classList.add('active-object');
           }
-          cabinetOpening.appendChild(ruElement);
-        }
 
-        // adding cabinet to dom
-        scene.appendChild(cabElement);
-        cabElement.appendChild(cabinetOpening);
+          // drawing cabinet opening
+
+          const cabinetOpening = document.createElement('div');
+          cabinetOpening.id = `${cabinet.id}-opening`;
+          cabinetOpening.classList.add('cabinet-opening');
+          cabinetOpening.style.width = `${19 * ppi * scale}px`;
+          cabinetOpening.style.height = `${
+            cabinet.ruCount * 1.75 * ppi * scale
+          }px`;
+          cabinetOpening.style.bottom = `${
+            cabinet.openingOffset * ppi * scale
+          }px`;
+          cabinetOpening.style.pointerEvents = 'none';
+
+          // drawing ru's
+          let ruSpan = 0;
+          for (let i = 0; i < cabinet.ruCount; i++) {
+            if (ruSpan) {
+              // handling rendering a devices RU span
+              ruSpan += -1;
+              continue;
+            }
+            const ru = cabinet.ruData[i];
+            const ruElement = document.createElement('div');
+            ruElement.id = cabinet.ruData[i].id;
+            ruElement.setAttribute('data-type', ObjectType.RU);
+            ruElement.classList.add('ru');
+            // handling if populated
+            if (ru.populator) {
+              ruSpan = ru.populator.ruSpan - 1;
+              ruElement.style.flex = `${ru.populator.ruSpan}`;
+              ruElement.style.backgroundColor = `#555555`;
+              ruElement.innerText = ru.populator.name;
+            }
+            // handling mode
+            if (sessionState.editMode.mode === EditMode.RU) {
+              ruElement.style.pointerEvents = 'auto';
+              ruElement.onclick = (event) => this.selectItem(event);
+              ruElement.classList.add('active-mode');
+            } else {
+              ruElement.style.pointerEvents = 'none';
+            }
+            // handling if active
+            if (
+              !!project.activeItems.length &&
+              !!project.activeItems.filter((item) => item.itemId === ru.id)
+                .length
+            ) {
+              ruElement.classList.add('active-object');
+            }
+            cabinetOpening.appendChild(ruElement);
+          }
+
+          // adding cabinet to dom
+          scene.appendChild(cabElement);
+          cabElement.appendChild(cabinetOpening);
+        }
       }
+    } else {
+      // draw our device/accessory
+      const ru = project.elevations
+        .filter(
+          (ele) =>
+            ele.cabinet.id === sessionState.editMode.singleModeObject.parentId
+        )[0]
+        .cabinet.ruData.filter(
+          (ru) => ru.id === sessionState.editMode.singleModeObject.itemId
+        )[0];
+      const ruHeight = ru.populator ? ru.populator.ruSpan * 1.75 : 1.75;
+      const ruContainer = document.createElement('div');
+      ruContainer.id = ru.id;
+      ruContainer.style.height = `${ruHeight * ppi * scale}px`;
+      ruContainer.style.width = `${19 * ppi * scale}px`;
+      ruContainer.style.backgroundColor = '#ffffff';
+      ruContainer.classList.add('cabinet');
+      ruContainer.innerHTML = ru.populator ? ru.populator.name : '';
+      ruContainer.setAttribute('data-type', ObjectType.RU);
+
+      // handling mode
+      if (sessionState.editMode.mode === EditMode.RU) {
+        ruContainer.style.pointerEvents = 'auto';
+        ruContainer.onclick = (event) => this.selectItem(event);
+        ruContainer.classList.add('active-mode');
+      } else {
+        ruContainer.style.pointerEvents = 'none';
+      }
+      // handling if active
+      if (
+        !!project.activeItems.length &&
+        !!project.activeItems.filter((item) => item.itemId === ru.id).length
+      ) {
+        ruContainer.classList.add('active-object');
+      }
+      console.log(ruContainer);
+      scene.appendChild(ruContainer);
     }
   }
 
@@ -247,12 +283,12 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       .pipe(
         map((currentState) => {
           if (
-            !!currentState.activeItems.filter((item) => item.item.id === id)
+            !!currentState.activeItems.filter((item) => item.itemId === id)
               .length
           ) {
             // unset active object if is active already
             const activeItems = currentState.activeItems.filter(
-              (item) => item.item.id !== id
+              (item) => item.itemId !== id
             );
             return { ...currentState, activeItems };
           } else {
@@ -269,13 +305,13 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
     this.elevationService.updateState(newState);
   }
 
-  getActiveItem(item: { id: string; type: string }, project: Project) {
+  getActiveItem(item: { id: string; type: string }, project: Project): ItemRef {
     switch (item.type) {
       case ObjectType.CAB:
         const cabinet = project.elevations.filter(
           (ele) => ele.cabinet.id === item.id
         )[0].cabinet;
-        return { type: item.type, item: cabinet, parentId: cabinet.id };
+        return { type: item.type, itemId: cabinet.id, parentId: cabinet.id };
       case ObjectType.RU:
         const parentRack = project.elevations.filter((ele) =>
           item.id.startsWith(ele.cabinet.id)
@@ -283,13 +319,17 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         const selectedRU = parentRack.ruData.filter(
           (ru) => ru.id === item.id
         )[0];
-        return { type: item.type, item: selectedRU, parentId: parentRack.id };
+        return {
+          type: item.type,
+          itemId: selectedRU.id,
+          parentId: parentRack.id
+        };
       default:
         break;
     }
   }
 
-  // adjustments to settings
+  // adjustments to session state
 
   private calculateScale(canvas: HTMLElement): number {
     const canvasWidth = canvas.clientWidth;
@@ -307,79 +347,127 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
 
   async changeEditMode(newEditMode: EditMode) {
     function handleEditModeUpdate(
-      currentSettings: RendererSettings,
+      currentSessionState: SessionState,
       project: Project
     ) {
-      const currentEditMode = currentSettings.editMode.mode;
-      let newSettings: RendererSettings | undefined;
-      if (newEditMode === EditMode.CAB) {
+      const currentEditMode = currentSessionState.editMode.mode;
+      let newSessionState: SessionState | undefined;
+      if (
+        newEditMode === EditMode.CAB &&
+        currentSessionState.editMode.ruView !== ModeView.SINGLE
+      ) {
         if (currentEditMode !== EditMode.CAB) {
-          // if going to multi, need to re-populate elevations
-          newSettings = {
-            ...currentSettings,
+          // toggle to cab mode from another mode
+          newSessionState = {
+            ...currentSessionState,
             editMode: {
-              ...currentSettings.editMode,
-              mode: newEditMode,
-            },
+              ...currentSessionState.editMode,
+              mode: newEditMode
+            }
           };
         } else {
+          // toggle between single and multi cab mode
           if (
-            currentSettings.editMode.cabMode === CabMode.SINGLE &&
+            currentSessionState.editMode.cabView === ModeView.SINGLE &&
             project.elevations.length > 1
           ) {
-            const cabMode = CabMode.MULTI;
-            newSettings = {
-              ...currentSettings,
+            // toggle to multi mode (only if multiple elevations exist in project)
+            const cabView = ModeView.MULTI;
+            newSessionState = {
+              ...currentSessionState,
               editMode: {
-                ...currentSettings.editMode,
-                cabMode,
-              },
+                ...currentSessionState.editMode,
+                singleModeObject: undefined,
+                cabView
+              }
             };
           } else if (
-            currentSettings.editMode.cabMode === CabMode.MULTI &&
-            project.activeItems.filter((item) => item.type === ObjectType.CAB)
-              .length === 1
+            // toggle to single mode (only if single item is currently selected)
+            currentSessionState.editMode.cabView === ModeView.MULTI &&
+            project.activeItems.length === 1
           ) {
-            const cabMode = CabMode.SINGLE;
-            newSettings = {
-              ...currentSettings,
+            const singleModeObject = project.activeItems[0];
+            const cabView = ModeView.SINGLE;
+            newSessionState = {
+              ...currentSessionState,
               editMode: {
-                ...currentSettings.editMode,
-                cabMode,
-              },
+                ...currentSessionState.editMode,
+                singleModeObject,
+                cabView
+              }
             };
           }
         }
-      } else if (
-        newEditMode === EditMode.DEVICE &&
-        currentEditMode !== EditMode.DEVICE
-      ) {
-        newSettings = {
-          ...currentSettings,
-          editMode: {
-            ...currentSettings.editMode,
-            mode: newEditMode,
-          },
-        };
+      } else if (newEditMode === EditMode.RU) {
+        if (currentEditMode !== EditMode.RU) {
+          newSessionState = {
+            ...currentSessionState,
+            editMode: {
+              ...currentSessionState.editMode,
+              mode: newEditMode
+            }
+          };
+        } else {
+          if (
+            currentSessionState.editMode.ruView === ModeView.MULTI &&
+            project.activeItems.length === 1 &&
+            !!project.activeItems.filter((item) => item.type === ObjectType.RU)
+              .length
+          ) {
+            const singleModeObject = project.activeItems[0];
+            const ruView = ModeView.SINGLE;
+            newSessionState = {
+              ...currentSessionState,
+              editMode: {
+                ...currentSessionState.editMode,
+                singleModeObject,
+                ruView
+              }
+            };
+          } else if (currentSessionState.editMode.ruView === ModeView.SINGLE) {
+            // setting singleModeObjectId back to cabinet id if cabView is still set to single
+            const singleModeObject: ItemRef =
+              currentSessionState.editMode.cabView === ModeView.SINGLE
+                ? {
+                    type: ObjectType.CAB,
+                    parentId:
+                      currentSessionState.editMode.singleModeObject.parentId,
+                    itemId: project.elevations.filter(
+                      (ele) =>
+                        ele.cabinet.id ===
+                        currentSessionState.editMode.singleModeObject.parentId
+                    )[0].cabinet.id
+                  }
+                : undefined;
+
+            newSessionState = {
+              ...currentSessionState,
+              editMode: {
+                ...currentSessionState.editMode,
+                singleModeObject,
+                ruView: ModeView.MULTI
+              }
+            };
+          }
+          // handle toggling multi and edit
+        }
       } else if (
         newEditMode === EditMode.INTEGRATE &&
         currentEditMode !== EditMode.INTEGRATE
       ) {
-        newSettings = {
-          ...currentSettings,
+        newSessionState = {
+          ...currentSessionState,
           editMode: {
-            ...currentSettings.editMode,
-            mode: newEditMode,
-          },
+            ...currentSessionState.editMode,
+            mode: newEditMode
+          }
         };
       }
 
-      return newSettings;
+      return newSessionState;
     }
 
-    const newSettings:
-      | RendererSettings
-      | undefined = await this.rendererSettings
+    const newSettings: SessionState | undefined = await this.sessionState
       .pipe(
         switchMap((currentSettings) =>
           this.projectState.pipe(
@@ -391,12 +479,12 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       .toPromise();
 
     if (newSettings) {
-      this.rendererSettings.next(newSettings);
+      this.sessionState.next(newSettings);
     }
   }
 
   async zoom(amount: number) {
-    const newSettings = await this.rendererSettings
+    const newSettings = await this.sessionState
       .pipe(
         map((currentSettings) => {
           let scale =
@@ -404,13 +492,13 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           scale = scale > 0.01 ? scale : 0.01;
           return {
             ...currentSettings,
-            scale,
+            scale
           };
         }),
         take(1)
       )
       .toPromise();
-    this.rendererSettings.next(newSettings);
+    this.sessionState.next(newSettings);
   }
 
   unsetActive() {

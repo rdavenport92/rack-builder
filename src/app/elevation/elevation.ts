@@ -2,13 +2,13 @@ import { v4 } from 'uuid';
 
 export interface Project {
   elevations: Elevation[];
-  activeItems: ActiveItem[];
+  activeItems: ItemRef[];
 }
 
-export interface ActiveItem {
+export interface ItemRef {
   type: string;
   parentId: string;
-  item: Cabinet | RUData;
+  itemId: string;
 }
 
 export interface Elevation {
@@ -43,12 +43,13 @@ export interface Populator {
   location: 'front' | 'rear';
   partNumber?: string;
   ruSpan: number;
+  depth: number;
 }
 
 export enum DeviceType {
   SWITCH = 'switch',
   ROUTER = 'router',
-  FIREWALL = 'firewall',
+  FIREWALL = 'firewall'
 }
 
 export interface Device extends Populator {
@@ -71,7 +72,7 @@ export interface PortGroup {
 export enum PortType {
   ETH = 'ethernet',
   SFP = 'sfp',
-  QSFP = 'qsfp',
+  QSFP = 'qsfp'
 }
 
 export interface Port {
@@ -83,7 +84,7 @@ export interface Port {
 export enum AccessoryType {
   BLANK = 'blank',
   BRUSH = 'brush',
-  DRING = 'dring',
+  DRING = 'dring'
 }
 
 export interface Accessory extends Populator {
@@ -92,7 +93,7 @@ export interface Accessory extends Populator {
 
 export enum ObjectType {
   CAB = 'cabinet',
-  RU = 'ru',
+  RU = 'ru'
 }
 
 export function createCabinet(
@@ -113,7 +114,7 @@ export function createCabinet(
     ruData.push({
       id: `${id}-ru-${i + 1}`,
       location: `${i + 1}`,
-      populator: undefined,
+      populator: undefined
     });
   }
   return {
@@ -123,7 +124,7 @@ export function createCabinet(
     dimensions,
     railDepth,
     openingOffset,
-    ruData,
+    ruData
   };
 }
 
@@ -134,6 +135,7 @@ export const SAMPLE_SWITCH: Device = {
   portGroups: [],
   location: 'front',
   ruSpan: 1,
+  depth: 20
 };
 
 export const SAMPLE_SWITCH2: Device = {
@@ -143,6 +145,7 @@ export const SAMPLE_SWITCH2: Device = {
   portGroups: [],
   location: 'front',
   ruSpan: 2,
+  depth: 20
 };
 
 export const SAMPLE_SWITCH3: Device = {
@@ -152,10 +155,11 @@ export const SAMPLE_SWITCH3: Device = {
   portGroups: [],
   location: 'front',
   ruSpan: 6,
+  depth: 20
 };
 
 export const SAMPLE_DEVICE_LIBRARY: Device[] = [
   SAMPLE_SWITCH,
   SAMPLE_SWITCH2,
-  SAMPLE_SWITCH3,
+  SAMPLE_SWITCH3
 ];

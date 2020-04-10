@@ -3,7 +3,7 @@ import {
   ViewChild,
   ElementRef,
   OnDestroy,
-  Input
+  Input,
 } from '@angular/core';
 
 import { interval, Subscription } from 'rxjs';
@@ -13,13 +13,13 @@ import { ElevationService } from '../elevation.service';
 import { Elevation } from '../elevation';
 import {
   BuildWindowSimpleRendererService,
-  EditMode
+  EditMode,
 } from './build-window-simple/build-window-simple-renderer.service';
 
 @Component({
   selector: 'app-build-window',
   templateUrl: './build-window.component.html',
-  styleUrls: ['./build-window.component.scss']
+  styleUrls: ['./build-window.component.scss'],
 })
 export class BuildWindowComponent implements OnDestroy {
   // @ViewChild('threeContainer') set threeContainer(
@@ -64,19 +64,23 @@ export class BuildWindowComponent implements OnDestroy {
   }
 
   projectLoaded = this.renderer.projectState.pipe(
-    map(project => !!project.elevations.length)
+    map((project) => !!project.elevations.length)
   );
 
-  editMode = this.renderer.rendererSettings.pipe(
-    map(settings => settings.editMode.mode)
+  editMode = this.renderer.sessionState.pipe(
+    map((settings) => settings.editMode.mode)
   );
 
-  cabMode = this.renderer.rendererSettings.pipe(
-    map(settings => settings.editMode.cabMode)
+  cabView = this.renderer.sessionState.pipe(
+    map((settings) => settings.editMode.cabView)
   );
 
-  zoomValue = this.renderer.rendererSettings.pipe(
-    map(settings => settings.scale * 100)
+  ruView = this.renderer.sessionState.pipe(
+    map((settings) => settings.editMode.ruView)
+  );
+
+  zoomValue = this.renderer.sessionState.pipe(
+    map((settings) => settings.scale * 100)
   );
 
   // settings methods

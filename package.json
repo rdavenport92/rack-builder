@@ -9,7 +9,8 @@
   "main": "main.js",
   "private": true,
   "prettier": {
-    "singleQuote": true
+    "singleQuote": true,
+    "trailingComma": "none"
   },
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
