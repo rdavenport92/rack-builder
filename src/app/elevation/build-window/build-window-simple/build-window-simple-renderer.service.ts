@@ -5,7 +5,9 @@ import {
   ItemRef,
   SessionState,
   EditMode,
-  ModeView
+  ModeView,
+  Cabinet,
+  RUData
 } from '../../elevation';
 import { ElevationService } from '../../elevation.service';
 import { BehaviorSubject, combineLatest } from 'rxjs';
@@ -14,11 +16,11 @@ import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
 @Injectable({
   providedIn: 'root'
 })
-export class BuildWindowSimpleRendererService implements OnDestroy {
+export class RendererService implements OnDestroy {
   private pixelsPerInch = 96; // probably will want to calculate this in main process to be more accurate per device
 
   canvas = new BehaviorSubject(undefined);
-  projectState = this.elevationService.projectState.pipe(shareReplay(1));
+  projectState = this.elevationService.projectState;
   sessionState = this.elevationService.sessionState;
 
   renderProject = combineLatest([
@@ -109,110 +111,29 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
   }
 
   private drawScene(project: Project, sessionState: SessionState) {
-    const ppi = this.pixelsPerInch;
-    const scale = sessionState.scale;
-
+    // starting each draw with a clean slate
     const scene = document.getElementById('scene');
     scene.innerHTML = '';
 
     if (sessionState.editMode.ruView !== ModeView.SINGLE) {
-      const cabinets = project.elevations.map((ele) => ele.cabinet);
-
-      for (let i = 0; i < cabinets.length; i++) {
-        const cabinet = cabinets[i];
-
-        if (
-          sessionState.editMode.cabView === ModeView.MULTI ||
-          (sessionState.editMode.cabView === ModeView.SINGLE &&
-            cabinet.id === sessionState.editMode.singleModeObject.parentId)
-        ) {
-          const { width, height } = cabinet.dimensions;
-
-          // drawing cabinet
-          const cabElement = document.createElement('div');
-          cabElement.id = cabinet.id;
-          cabElement.setAttribute('data-parentId', cabinet.id);
-          cabElement.setAttribute('data-type', ObjectType.CAB);
-          cabElement.classList.add('cabinet');
-          cabElement.style.width = `${width * ppi * scale}px`;
-          cabElement.style.height = `${height * ppi * scale}px`;
-          cabElement.style.margin = `${4 * ppi * scale}px`;
-          // handling mode
-          if (sessionState.editMode.mode === EditMode.CAB) {
-            cabElement.onclick = (event) => this.selectItem(event);
-            cabElement.classList.add('active-mode');
-          }
-          // handling if active
-          if (
-            !!sessionState.activeItems.length &&
-            !!sessionState.activeItems.filter(
-              (item) => item.itemId === cabinet.id
-            ).length
-          ) {
-            cabElement.classList.add('active-object');
-          }
-
-          // drawing cabinet opening
-
-          const cabinetOpening = document.createElement('div');
-          cabinetOpening.id = `${cabinet.id}-opening`;
-          cabinetOpening.classList.add('cabinet-opening');
-          cabinetOpening.style.width = `${19 * ppi * scale}px`;
-          cabinetOpening.style.height = `${
-            cabinet.ruCount * 1.75 * ppi * scale
-          }px`;
-          cabinetOpening.style.bottom = `${
-            cabinet.openingOffset * ppi * scale
-          }px`;
-          cabinetOpening.style.pointerEvents = 'none';
-
-          // drawing ru's
-          let ruSpan = 0;
-          for (let i = 0; i < cabinet.ruCount; i++) {
-            if (ruSpan) {
-              // handling rendering a devices RU span
-              ruSpan += -1;
-              continue;
-            }
-            const ru = cabinet.ruData[i];
-            const ruElement = document.createElement('div');
-            ruElement.id = cabinet.ruData[i].id;
-            ruElement.setAttribute('data-parentid', cabinet.id);
-            ruElement.setAttribute('data-type', ObjectType.RU);
-            ruElement.classList.add('ru');
-            // handling if populated
-            if (ru.populator) {
-              ruSpan = ru.populator.ruSpan - 1;
-              ruElement.style.flex = `${ru.populator.ruSpan}`;
-              ruElement.style.backgroundColor = `#555555`;
-              ruElement.innerText = ru.populator.name;
-            }
-            // handling mode
-            if (sessionState.editMode.mode === EditMode.RU) {
-              ruElement.style.pointerEvents = 'auto';
-              ruElement.onclick = (event) => this.selectItem(event);
-              ruElement.classList.add('active-mode');
-            } else {
-              ruElement.style.pointerEvents = 'none';
-            }
-            // handling if active
-            if (
-              !!sessionState.activeItems.length &&
-              !!sessionState.activeItems.filter((item) => item.itemId === ru.id)
-                .length
-            ) {
-              ruElement.classList.add('active-object');
-            }
-            cabinetOpening.appendChild(ruElement);
-          }
-
-          // adding cabinet to dom
-          scene.appendChild(cabElement);
-          cabElement.appendChild(cabinetOpening);
+      // draw cabinets if not in ruView single view mode
+      if (sessionState.editMode.cabView === ModeView.MULTI) {
+        // loop through and draw all cabinets
+        const cabinets = project.elevations.map((ele) => ele.cabinet);
+        for (let i = 0; i < cabinets.length; i++) {
+          const cabinet = cabinets[i];
+          this.drawCabinet(cabinet, scene, sessionState);
         }
+      } else {
+        // only drawing the singleMode cabinet
+        const cabinetId = sessionState.editMode.singleModeObject.parentId;
+        const cabinet = project.elevations.filter(
+          (ele) => ele.cabinet.id === cabinetId
+        )[0].cabinet;
+        this.drawCabinet(cabinet, scene, sessionState);
       }
     } else {
-      // draw our device/accessory
+      // drawing a single RU container for single view mode
       const ru = project.elevations
         .filter(
           (ele) =>
@@ -221,38 +142,119 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         .cabinet.ruData.filter(
           (ru) => ru.id === sessionState.editMode.singleModeObject.itemId
         )[0];
-      const ruHeight = ru.populator ? ru.populator.ruSpan * 1.75 : 1.75;
-      const ruContainer = document.createElement('div');
-      ruContainer.id = ru.id;
-      ruContainer.setAttribute(
-        'data-parentid',
-        sessionState.editMode.singleModeObject.parentId
-      );
-      ruContainer.style.height = `${ruHeight * ppi * scale}px`;
-      ruContainer.style.width = `${19 * ppi * scale}px`;
-      ruContainer.style.backgroundColor = '#ffffff';
-      ruContainer.classList.add('cabinet');
-      ruContainer.innerHTML = ru.populator ? ru.populator.name : '';
-      ruContainer.setAttribute('data-type', ObjectType.RU);
-
-      // handling mode
-      if (sessionState.editMode.mode === EditMode.RU) {
-        ruContainer.style.pointerEvents = 'auto';
-        ruContainer.onclick = (event) => this.selectItem(event);
-        ruContainer.classList.add('active-mode');
-      } else {
-        ruContainer.style.pointerEvents = 'none';
-      }
-      // handling if active
-      if (
-        !!sessionState.activeItems.length &&
-        !!sessionState.activeItems.filter((item) => item.itemId === ru.id)
-          .length
-      ) {
-        ruContainer.classList.add('active-object');
-      }
-      scene.appendChild(ruContainer);
+      this.drawSingleRUContainer(ru, scene, sessionState);
     }
+  }
+
+  private drawCabinet(
+    cabinet: Cabinet,
+    scene: HTMLElement,
+    sessionState: SessionState
+  ) {
+    const ppi = this.pixelsPerInch;
+    const scale = sessionState.scale;
+    const { width, height } = cabinet.dimensions;
+    // drawing cabinet
+    const cabElement = document.createElement('div');
+    cabElement.id = cabinet.id;
+    cabElement.setAttribute('data-parentid', cabinet.id);
+    cabElement.setAttribute('data-type', ObjectType.CAB);
+    cabElement.classList.add('cabinet');
+    cabElement.style.width = `${width * ppi * scale}px`;
+    cabElement.style.height = `${height * ppi * scale}px`;
+    cabElement.style.margin = `${4 * ppi * scale}px`;
+    // handling mode
+    if (sessionState.editMode.mode === EditMode.CAB) {
+      cabElement.onclick = (event) => this.selectItem(event);
+      cabElement.classList.add('active-mode');
+    }
+    // handling if active
+    if (
+      !!sessionState.activeItems.length &&
+      !!sessionState.activeItems.filter((item) => item.itemId === cabinet.id)
+        .length
+    ) {
+      cabElement.classList.add('active-object');
+    }
+
+    // drawing cabinet opening
+    const cabinetOpening = document.createElement('div');
+    cabinetOpening.id = `${cabinet.id}-opening`;
+    cabinetOpening.classList.add('cabinet-opening');
+    cabinetOpening.style.width = `${19 * ppi * scale}px`;
+    cabinetOpening.style.height = `${cabinet.ruCount * 1.75 * ppi * scale}px`;
+    cabinetOpening.style.bottom = `${cabinet.openingOffset * ppi * scale}px`;
+    cabinetOpening.style.pointerEvents = 'none';
+
+    // drawing ru's
+    let ruSpan = 0;
+    for (let i = 0; i < cabinet.ruCount; i++) {
+      if (ruSpan) {
+        // handling rendering a devices RU span
+        ruSpan += -1;
+        continue;
+      }
+      const ru = cabinet.ruData[i];
+      ruSpan = !!ru.populator ? ru.populator.ruSpan - 1 : ruSpan;
+      this.drawRU(ru, cabinet.id, cabinetOpening, sessionState);
+    }
+    // adding cabinet elements to dom
+    scene.appendChild(cabElement);
+    cabElement.appendChild(cabinetOpening);
+  }
+
+  private drawSingleRUContainer(
+    ru: RUData,
+    scene: HTMLElement,
+    sessionState: SessionState
+  ) {
+    const ppi = this.pixelsPerInch;
+    const scale = sessionState.scale;
+    const parentId = sessionState.editMode.singleModeObject.parentId;
+    const ruHeight = ru.populator ? ru.populator.ruSpan * 1.75 : 1.75;
+
+    const ruContainer = document.createElement('div');
+    ruContainer.style.height = `${ruHeight * ppi * scale}px`;
+    ruContainer.style.width = `${19 * ppi * scale}px`;
+    ruContainer.classList.add('ru-single-container');
+    this.drawRU(ru, parentId, ruContainer, sessionState);
+
+    scene.appendChild(ruContainer);
+  }
+
+  private drawRU(
+    ru: RUData,
+    parentId: string,
+    ruContainerElement: HTMLElement,
+    sessionState: SessionState
+  ) {
+    const ruElement = document.createElement('div');
+    ruElement.id = ru.id;
+    ruElement.setAttribute('data-parentid', parentId);
+    ruElement.setAttribute('data-type', ObjectType.RU);
+    ruElement.classList.add('ru');
+    // handling if populated
+    if (ru.populator) {
+      ruElement.style.flex = `${ru.populator.ruSpan}`;
+      ruElement.style.backgroundColor = `#555555`;
+      ruElement.innerText = ru.populator.name;
+    }
+    // handling mode
+    if (sessionState.editMode.mode === EditMode.RU) {
+      ruElement.style.pointerEvents = 'auto';
+      ruElement.onclick = (event) => this.selectItem(event);
+      ruElement.classList.add('active-mode');
+    } else {
+      ruElement.style.pointerEvents = 'none';
+    }
+    // handling if active
+    if (
+      !!sessionState.activeItems.length &&
+      !!sessionState.activeItems.filter((item) => item.itemId === ru.id).length
+    ) {
+      ruElement.classList.add('active-object');
+    }
+    ruContainerElement.appendChild(ruElement);
   }
 
   private async selectItem(event: MouseEvent) {

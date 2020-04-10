@@ -3,23 +3,20 @@ import {
   ViewChild,
   ElementRef,
   OnDestroy,
-  Input,
+  Input
 } from '@angular/core';
 
 import { interval, Subscription } from 'rxjs';
 import { tap, map, distinctUntilChanged, filter } from 'rxjs/operators';
 
 import { ElevationService } from '../elevation.service';
-import { Elevation } from '../elevation';
-import {
-  BuildWindowSimpleRendererService,
-  EditMode,
-} from './build-window-simple/build-window-simple-renderer.service';
+import { Elevation, EditMode } from '../elevation';
+import { RendererService } from './build-window-simple/build-window-simple-renderer.service';
 
 @Component({
   selector: 'app-build-window',
   templateUrl: './build-window.component.html',
-  styleUrls: ['./build-window.component.scss'],
+  styleUrls: ['./build-window.component.scss']
 })
 export class BuildWindowComponent implements OnDestroy {
   // @ViewChild('threeContainer') set threeContainer(
@@ -54,7 +51,7 @@ export class BuildWindowComponent implements OnDestroy {
 
   constructor(
     private elevationService: ElevationService,
-    private renderer: BuildWindowSimpleRendererService
+    private renderer: RendererService
   ) {
     //this.threeContainerSizeSub = this.threeContainerSize.subscribe();
   }
