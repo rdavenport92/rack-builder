@@ -13,8 +13,10 @@ import { RendererService } from './build-window-simple-renderer.service';
   encapsulation: ViewEncapsulation.None
 })
 export class BuildWindowSimpleComponent {
-  @ViewChild('project') set projectElement(elementRef: ElementRef) {
-    this.renderer.attachCanvas(elementRef.nativeElement);
+  @ViewChild('project') set projectElement(elementRef: ElementRef | undefined) {
+    if (!!elementRef) {
+      this.renderer.init(elementRef.nativeElement.id);
+    }
   }
 
   constructor(private renderer: RendererService) {}

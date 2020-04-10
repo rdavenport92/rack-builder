@@ -19,40 +19,64 @@ import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
 export class RendererService implements OnDestroy {
   private pixelsPerInch = 96; // probably will want to calculate this in main process to be more accurate per device
 
-  canvas = new BehaviorSubject(undefined);
+  private canvasId: string | undefined;
+
+  canvasReady = new BehaviorSubject(false);
   projectState = this.elevationService.projectState;
   sessionState = this.elevationService.sessionState;
 
-  renderProject = combineLatest([
-    this.canvas,
+  rendererUpdateTrigger = combineLatest([
+    this.canvasReady,
     this.projectState,
     this.sessionState
-  ]).pipe(
-    filter(([canvas, update, _settings]) => !!canvas && !!update),
-    tap(([canvas, update, settings]) =>
-      this.renderUpdate(canvas, update, settings)
+  ])
+    .pipe(
+      filter(
+        ([canvasReady, projectState, _settings]) =>
+          // only rendering updates if the canvas is attached and the project is loaded
+          !!canvasReady && !!projectState
+      ),
+      tap(([_canvasReady, projectState, settings]) =>
+        this.renderUpdate(projectState, settings)
+      )
     )
-  );
+    .subscribe();
 
   constructor(private elevationService: ElevationService) {
-    this.renderProject.subscribe();
     window.addEventListener('keydown', (e) => this.registerHotkeys(e));
   }
 
   ngOnDestroy() {
+    this.rendererUpdateTrigger.unsubscribe();
     window.removeEventListener('keydown', this.registerHotkeys);
   }
 
-  registerHotkeys(e: KeyboardEvent) {
+  async registerHotkeys(e: KeyboardEvent) {
+    let sessionState: SessionState | undefined;
     switch (e.keyCode) {
       case 97: // Numpad1
-        this.changeEditMode(EditMode.CAB);
+        sessionState = await this.changeEditMode(EditMode.CAB);
+        if (sessionState) {
+          this.bringSceneIntoFrame(sessionState);
+        }
         break;
       case 98: // Numpad2
-        this.changeEditMode(EditMode.RU);
+        sessionState = await this.changeEditMode(EditMode.RU);
+        if (sessionState) {
+          this.bringSceneIntoFrame(sessionState);
+        }
         break;
       case 99: // Numpad3
-        this.changeEditMode(EditMode.INTEGRATE);
+        sessionState = await this.changeEditMode(EditMode.INTEGRATE);
+        if (sessionState) {
+          this.bringSceneIntoFrame(sessionState);
+        }
+        break;
+      case 110: // . on keypad
+        sessionState = await this.elevationService.sessionState
+          .pipe(take(1))
+          .toPromise();
+        this.bringSceneIntoFrame(sessionState);
         break;
       case 187: // +
         this.zoom(0.01);
@@ -68,53 +92,75 @@ export class RendererService implements OnDestroy {
     }
   }
 
-  attachCanvas(element: HTMLElement) {
+  init(canvasId: string) {
+    // create the scene
+    this.canvasId = canvasId;
+    const canvas = document.getElementById(this.canvasId);
     const projectElementChild = document.createElement('div');
     projectElementChild.classList.add('project-child');
     const scene = document.createElement('div');
     scene.id = 'scene';
     scene.classList.add('scene');
-    element.appendChild(projectElementChild);
+    canvas.appendChild(projectElementChild);
     projectElementChild.appendChild(scene);
-    this.canvas.next(element);
+
+    // notify renderer that canvas is ready
+    this.canvasReady.next(true);
   }
 
-  private renderUpdate(
-    canvas: HTMLElement,
-    update: Project,
-    settings: SessionState
-  ) {
-    if (!settings.scale && !!canvas && !!update.elevations.length) {
-      // scale has not been set yet - setting temp scale to 0.01 so that we can draw
-      // cabinets and get an idea for what the initial scale needs to be.
-      const tempSettings = {
-        ...settings,
-        scale: 0.01
-      };
-      this.drawScene(update, tempSettings);
-      // by this point, the canvas will contain accurate dimensions which will allow us to set
-      // a more appropriate initial scale based on the dimensions of the entire scene
-      const newScale = this.calculateScale(canvas);
-      const newSessionState: SessionState = {
-        ...settings,
-        scale: newScale,
-        editMode: {
-          ...settings.editMode,
-          cabView:
-            update.elevations.length > 1 ? ModeView.MULTI : ModeView.SINGLE
-        }
-      };
-      this.elevationService.updateSessionState(newSessionState);
-    } else if (!!settings.scale && !!canvas && !!update) {
-      this.drawScene(update, settings);
+  private renderUpdate(update: Project, sessionState: SessionState) {
+    const scene = document.getElementById('scene');
+    if (!sessionState.scale && !!update.elevations.length) {
+      // project scale initializes at 0 so that we can bring into frame on init
+      const initSessionState = { ...sessionState, scale: 0.01 };
+      this.drawScene(scene, update, initSessionState);
+      this.bringSceneIntoFrame(initSessionState);
+    } else if (!!sessionState.scale && !!update) {
+      // need to begin each draw with a clean slate
+      scene.innerHTML = '';
+      this.drawScene(scene, update, sessionState);
     }
   }
 
-  private drawScene(project: Project, sessionState: SessionState) {
-    // starting each draw with a clean slate
-    const scene = document.getElementById('scene');
-    scene.innerHTML = '';
+  bringSceneIntoFrame(sessionState: SessionState) {
+    const newScale = this.calculateScale(sessionState.scale);
+    const newSessionState: SessionState = {
+      ...sessionState,
+      scale: newScale
+    };
+    this.elevationService.updateSessionState(newSessionState);
+  }
 
+  private calculateScale(prevScale: number): number {
+    const ppi = this.pixelsPerInch;
+    const canvas = document.getElementById(this.canvasId);
+    const canvasWidth = canvas.clientWidth;
+    const canvasHeight = canvas.clientHeight;
+    const sceneWidth = +document.getElementById('scene').clientWidth.toFixed(2);
+    const sceneHeight = +document
+      .getElementById('scene')
+      .clientHeight.toFixed(2);
+
+    const trueSceneHeight = sceneHeight / ppi / prevScale;
+    const trueSceneWidth = sceneWidth / ppi / prevScale;
+    const unscaledSceneWidth = trueSceneWidth * ppi;
+    const unscaledSceneHeight = trueSceneHeight * ppi;
+
+    const widthDiff = canvasWidth - unscaledSceneWidth;
+    const heightDiff = canvasHeight - unscaledSceneHeight;
+
+    if (trueSceneWidth > trueSceneHeight && widthDiff < heightDiff) {
+      return +((canvasWidth / unscaledSceneWidth) * 0.95).toFixed(2);
+    } else {
+      return +((canvasHeight / unscaledSceneHeight) * 0.95).toFixed(2);
+    }
+  }
+
+  private drawScene(
+    scene: HTMLElement,
+    project: Project,
+    sessionState: SessionState
+  ) {
     if (sessionState.editMode.ruView !== ModeView.SINGLE) {
       // draw cabinets if not in ruView single view mode
       if (sessionState.editMode.cabView === ModeView.MULTI) {
@@ -288,22 +334,6 @@ export class RendererService implements OnDestroy {
     this.elevationService.updateSessionState(newState);
   }
 
-  // adjustments to session state
-
-  private calculateScale(canvas: HTMLElement): number {
-    const canvasWidth = canvas.clientWidth;
-    const canvasHeight = canvas.clientHeight;
-    const sceneWidth = document.getElementById('scene').clientWidth;
-    const sceneHeight = document.getElementById('scene').clientHeight;
-    if (sceneWidth > sceneHeight) {
-      // need to scale to fit width
-      return (canvasWidth / (sceneWidth * this.pixelsPerInch)) * 0.95;
-    } else {
-      // need to scale to fit height
-      return (canvasHeight / (sceneHeight * this.pixelsPerInch)) * 0.95;
-    }
-  }
-
   async changeEditMode(newEditMode: EditMode) {
     function handleEditModeUpdate(
       currentSessionState: SessionState,
@@ -427,38 +457,39 @@ export class RendererService implements OnDestroy {
       return newSessionState;
     }
 
-    const newSettings: SessionState | undefined = await this.sessionState
+    const newSessionState: SessionState | undefined = await this.sessionState
       .pipe(
-        switchMap((currentSettings) =>
+        switchMap((currentSessionState) =>
           this.projectState.pipe(
-            map((project) => handleEditModeUpdate(currentSettings, project))
+            map((project) => handleEditModeUpdate(currentSessionState, project))
           )
         ),
         take(1)
       )
       .toPromise();
 
-    if (newSettings) {
-      this.elevationService.updateSessionState(newSettings);
+    if (newSessionState) {
+      this.elevationService.updateSessionState(newSessionState);
+      return newSessionState;
     }
   }
 
   async zoom(amount: number) {
-    const newSettings = await this.sessionState
+    const newSessionState = await this.sessionState
       .pipe(
-        map((currentSettings) => {
+        map((currentSessionState) => {
           let scale =
-            Math.round(currentSettings.scale * 100 + amount * 100) / 100;
+            Math.round(currentSessionState.scale * 100 + amount * 100) / 100;
           scale = scale > 0.01 ? scale : 0.01;
           return {
-            ...currentSettings,
+            ...currentSessionState,
             scale
           };
         }),
         take(1)
       )
       .toPromise();
-    this.sessionState.next(newSettings);
+    this.sessionState.next(newSessionState);
   }
 
   unsetActive() {
