@@ -157,14 +157,14 @@ export const SAMPLE_PROJECT = {
         height: 78.5,
         depth: 43
       })
+    },
+    {
+      cabinet: createCabinet('Rack 2', 42, {
+        width: 23.63,
+        height: 78.5,
+        depth: 43
+      })
     }
-    // {
-    //   cabinet: createCabinet('Rack 2', 42, {
-    //     width: 23.63,
-    //     height: 78.5,
-    //     depth: 43
-    //   })
-    // }
   ]
 };
 

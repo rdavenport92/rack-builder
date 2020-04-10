@@ -136,10 +136,8 @@ export class RendererService implements OnDestroy {
     const canvas = document.getElementById(this.canvasId);
     const canvasWidth = canvas.clientWidth;
     const canvasHeight = canvas.clientHeight;
-    const sceneWidth = +document.getElementById('scene').clientWidth.toFixed(2);
-    const sceneHeight = +document
-      .getElementById('scene')
-      .clientHeight.toFixed(2);
+    const sceneWidth = document.getElementById('scene').clientWidth;
+    const sceneHeight = document.getElementById('scene').clientHeight;
 
     const trueSceneHeight = sceneHeight / ppi / prevScale;
     const trueSceneWidth = sceneWidth / ppi / prevScale;
@@ -378,7 +376,17 @@ export class RendererService implements OnDestroy {
           } else if (
             // toggle to single mode (only if single item is currently selected)
             currentSessionState.editMode.cabView === ModeView.MULTI &&
-            currentSessionState.activeItems.length === 1
+            // if multiple activeItems exist, need to ensure that they belong to the same parent
+            currentSessionState.activeItems.reduce(
+              (uniqueParents, activeItem) =>
+                // if discovering a unique parentId
+                uniqueParents.filter(
+                  (item) => item.parentId === activeItem.parentId
+                ).length > 0
+                  ? uniqueParents
+                  : [...uniqueParents, activeItem],
+              []
+            ).length === 1
           ) {
             const singleModeObject = currentSessionState.activeItems[0];
             const cabView = ModeView.SINGLE;
