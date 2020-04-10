@@ -49,10 +49,7 @@ export class BuildWindowComponent implements OnDestroy {
   // );
   // threeContainerSizeSub: Subscription;
 
-  constructor(
-    private elevationService: ElevationService,
-    private renderer: RendererService
-  ) {
+  constructor(private renderer: RendererService) {
     //this.threeContainerSizeSub = this.threeContainerSize.subscribe();
   }
 
@@ -64,20 +61,22 @@ export class BuildWindowComponent implements OnDestroy {
     map((project) => !!project.elevations.length)
   );
 
-  editMode = this.renderer.sessionState.pipe(
-    map((settings) => settings.editMode.mode)
+  sessionState = this.renderer.sessionState;
+
+  editMode = this.sessionState.pipe(
+    map((sessionState) => sessionState.editMode.mode)
   );
 
-  cabView = this.renderer.sessionState.pipe(
-    map((settings) => settings.editMode.cabView)
+  cabView = this.sessionState.pipe(
+    map((sessionState) => sessionState.editMode.cabView)
   );
 
-  ruView = this.renderer.sessionState.pipe(
-    map((settings) => settings.editMode.ruView)
+  ruView = this.sessionState.pipe(
+    map((sessionState) => sessionState.editMode.ruView)
   );
 
-  zoomValue = this.renderer.sessionState.pipe(
-    map((settings) => settings.scale * 100)
+  zoomValue = this.sessionState.pipe(
+    map((sessionState) => sessionState.scale * 100)
   );
 
   // settings methods

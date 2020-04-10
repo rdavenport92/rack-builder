@@ -172,7 +172,12 @@ export class RendererService implements OnDestroy {
         }
       } else {
         // only drawing the singleMode cabinet
-        const cabinetId = sessionState.editMode.singleModeObject.parentId;
+        const cabinetId =
+          // will always draw single cabinet if only 1 cabinet in project
+          project.elevations.length === 1
+            ? project.elevations[0].cabinet.id
+            : // if toggling from multi mode - referencing the selected rack
+              sessionState.editMode.singleModeObject.parentId;
         const cabinet = project.elevations.filter(
           (ele) => ele.cabinet.id === cabinetId
         )[0].cabinet;
@@ -489,7 +494,7 @@ export class RendererService implements OnDestroy {
         take(1)
       )
       .toPromise();
-    this.sessionState.next(newSessionState);
+    this.elevationService.updateSessionState(newSessionState);
   }
 
   unsetActive() {

@@ -10,71 +10,67 @@ import {
   ItemRef,
   SessionState,
   EditMode,
-  ModeView
+  ModeView,
+  SAMPLE_PROJECT
 } from './elevation';
 import { BehaviorSubject, of } from 'rxjs';
-import { map, take, shareReplay } from 'rxjs/operators';
-
-const initialSessionState: SessionState = {
-  scale: 0,
-  editMode: {
-    mode: EditMode.CAB,
-    cabView: ModeView.MULTI,
-    ruView: ModeView.MULTI,
-    singleModeObject: undefined
-  },
-  activeItems: []
-};
+import { map, take, shareReplay, filter } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ElevationService {
   // projectState maintains state of the build
-  projectState = new BehaviorSubject<Project>({
-    elevations: []
-  });
+  private projectStateSubject = new BehaviorSubject<Project | undefined>(
+    undefined
+  );
+  projectState = this.projectStateSubject.pipe(
+    filter((projectState) => !!projectState)
+  );
 
   // sessionState maintains state of the session environment
-  sessionState = new BehaviorSubject(initialSessionState);
-  activeItems = this.sessionState.pipe(
-    map((state) => state.activeItems),
-    shareReplay(1)
+  private sessionStateSubject = new BehaviorSubject(undefined);
+  sessionState = this.sessionStateSubject.pipe(
+    filter((sessionState) => !!sessionState)
   );
 
   populatorLibrary = of(SAMPLE_DEVICE_LIBRARY);
 
   constructor(private zone: NgZone) {
-    setTimeout(
-      () =>
-        this.projectState.next({
-          elevations: [
-            {
-              cabinet: createCabinet('Rack 1', 42, {
-                width: 23.63,
-                height: 78.5,
-                depth: 43
-              })
-            },
-            {
-              cabinet: createCabinet('Rack 2', 42, {
-                width: 23.63,
-                height: 78.5,
-                depth: 43
-              })
-            }
-          ]
-        }),
-      0
-    );
+    setTimeout(() => this.loadProject(SAMPLE_PROJECT), 0);
+  }
+
+  loadProject(project: Project) {
+    const initialSessionState: SessionState = {
+      scale: 0,
+      editMode: {
+        mode: EditMode.CAB,
+        cabView: ModeView.MULTI,
+        ruView: ModeView.MULTI,
+        singleModeObject: undefined
+      },
+      activeItems: []
+    };
+
+    if (project.elevations.length < 2) {
+      const sessionStateSingleRackModeOnly = {
+        ...initialSessionState,
+        editMode: { ...initialSessionState.editMode, cabView: ModeView.SINGLE }
+      };
+      this.updateSessionState(sessionStateSingleRackModeOnly);
+    } else {
+      this.updateSessionState(initialSessionState);
+    }
+
+    this.updateProjectState(project);
   }
 
   updateProjectState(newState: Project) {
-    this.zone.run(() => this.projectState.next({ ...newState }));
+    this.zone.run(() => this.projectStateSubject.next({ ...newState }));
   }
 
   updateSessionState(newState: SessionState) {
-    this.zone.run(() => this.sessionState.next(newState));
+    this.zone.run(() => this.sessionStateSubject.next(newState));
   }
 
   async updateRU(populator: Device | Accessory, activeItem: ItemRef) {
