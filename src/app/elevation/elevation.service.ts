@@ -7,21 +7,37 @@ import {
   Device,
   Accessory,
   RUData,
-  ItemRef
+  ItemRef,
+  SessionState,
+  EditMode,
+  ModeView
 } from './elevation';
 import { BehaviorSubject, of } from 'rxjs';
 import { map, take, shareReplay } from 'rxjs/operators';
+
+const initialSessionState: SessionState = {
+  scale: 0,
+  editMode: {
+    mode: EditMode.CAB,
+    cabView: ModeView.MULTI,
+    ruView: ModeView.MULTI,
+    singleModeObject: undefined
+  },
+  activeItems: []
+};
 
 @Injectable({
   providedIn: 'root'
 })
 export class ElevationService {
-  currentProject = new BehaviorSubject<Project>({
-    elevations: [],
-    activeItems: undefined
+  // projectState maintains state of the build
+  projectState = new BehaviorSubject<Project>({
+    elevations: []
   });
 
-  activeItems = this.currentProject.pipe(
+  // sessionState maintains state of the session environment
+  sessionState = new BehaviorSubject(initialSessionState);
+  activeItems = this.sessionState.pipe(
     map((state) => state.activeItems),
     shareReplay(1)
   );
@@ -31,7 +47,7 @@ export class ElevationService {
   constructor(private zone: NgZone) {
     setTimeout(
       () =>
-        this.currentProject.next({
+        this.projectState.next({
           elevations: [
             {
               cabinet: createCabinet('Rack 1', 42, {
@@ -47,19 +63,22 @@ export class ElevationService {
                 depth: 43
               })
             }
-          ],
-          activeItems: []
+          ]
         }),
       0
     );
   }
 
-  updateState(newState: Project) {
-    this.zone.run(() => this.currentProject.next({ ...newState }));
+  updateProjectState(newState: Project) {
+    this.zone.run(() => this.projectState.next({ ...newState }));
+  }
+
+  updateSessionState(newState: SessionState) {
+    this.zone.run(() => this.sessionState.next(newState));
   }
 
   async updateRU(populator: Device | Accessory, activeItem: ItemRef) {
-    const newState = await this.currentProject
+    const newState = await this.projectState
       .pipe(
         map((currentState) => {
           // creating the updated RU
@@ -88,27 +107,20 @@ export class ElevationService {
             return ele;
           });
 
-          // updating the active item
-          const withoutOldActiveItem = currentState.activeItems.filter(
-            (item) => item.itemId !== activeItem.itemId
-          );
-          const newActiveItem = { ...activeItem, item: updatedRU };
-          const updatedActiveItems = [...withoutOldActiveItem, newActiveItem];
           return {
             ...currentState,
-            elevations,
-            activeItems: updatedActiveItems
+            elevations
           };
         }),
         take(1)
       )
       .toPromise();
 
-    this.updateState(newState);
+    this.updateProjectState(newState);
   }
 
   async unsetActive() {
-    const newState: Project = await this.currentProject
+    const newSessionState: SessionState = await this.sessionState
       .pipe(
         map((currentState) => {
           return { ...currentState, activeItems: [] };
@@ -117,7 +129,7 @@ export class ElevationService {
       )
       .toPromise();
 
-    this.updateState(newState);
+    this.updateSessionState(newSessionState);
   }
 
   // attachThreeToDom(element: HTMLElement) {

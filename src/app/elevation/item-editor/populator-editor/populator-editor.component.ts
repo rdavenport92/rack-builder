@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { ElevationService } from '../../elevation.service';
-import { map, tap, filter } from 'rxjs/operators';
+import { map, filter } from 'rxjs/operators';
 import { RUData, ItemRef } from '../../elevation';
 import { FormBuilder } from '@angular/forms';
 import { Observable } from 'rxjs';
@@ -15,7 +15,7 @@ export class PopulatorEditorComponent {
 
   currentRU: Observable<
     RUData | undefined
-  > = this.elevationService.currentProject.pipe(
+  > = this.elevationService.projectState.pipe(
     map((project) => {
       if (this.activeItemRef) {
         return project.elevations

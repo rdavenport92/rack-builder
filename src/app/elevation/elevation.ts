@@ -1,8 +1,29 @@
 import { v4 } from 'uuid';
 
+export interface SessionState {
+  scale: number;
+  editMode: {
+    mode: EditMode;
+    cabView: ModeView;
+    ruView: ModeView;
+    singleModeObject: ItemRef | undefined;
+  };
+  activeItems: ItemRef[];
+}
+
+export enum EditMode {
+  CAB = 'cabinet',
+  RU = 'ru',
+  INTEGRATE = 'integrate'
+}
+
+export enum ModeView {
+  SINGLE = 'single',
+  MULTI = 'multi'
+}
+
 export interface Project {
   elevations: Elevation[];
-  activeItems: ItemRef[];
 }
 
 export interface ItemRef {

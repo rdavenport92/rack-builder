@@ -1,39 +1,15 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { Project, ObjectType, ItemRef, RUData } from '../../elevation';
+import {
+  Project,
+  ObjectType,
+  ItemRef,
+  SessionState,
+  EditMode,
+  ModeView
+} from '../../elevation';
 import { ElevationService } from '../../elevation.service';
 import { BehaviorSubject, combineLatest } from 'rxjs';
 import { tap, filter, take, map, switchMap, shareReplay } from 'rxjs/operators';
-
-export enum EditMode {
-  CAB = 'cabinet',
-  RU = 'ru',
-  INTEGRATE = 'integrate'
-}
-
-enum ModeView {
-  SINGLE = 'single',
-  MULTI = 'multi'
-}
-
-interface SessionState {
-  scale: number;
-  editMode: {
-    mode: EditMode;
-    cabView: ModeView;
-    ruView: ModeView;
-    singleModeObject: ItemRef | undefined;
-  };
-}
-
-const initialSessionState: SessionState = {
-  scale: 0,
-  editMode: {
-    mode: EditMode.CAB,
-    cabView: ModeView.MULTI,
-    ruView: ModeView.MULTI,
-    singleModeObject: undefined
-  }
-};
 
 @Injectable({
   providedIn: 'root'
@@ -42,8 +18,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
   private pixelsPerInch = 96; // probably will want to calculate this in main process to be more accurate per device
 
   canvas = new BehaviorSubject(undefined);
-  projectState = this.elevationService.currentProject.pipe(shareReplay(1));
-  sessionState = new BehaviorSubject(initialSessionState);
+  projectState = this.elevationService.projectState.pipe(shareReplay(1));
+  sessionState = this.elevationService.sessionState;
 
   renderProject = combineLatest([
     this.canvas,
@@ -117,7 +93,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       // by this point, the canvas will contain accurate dimensions which will allow us to set
       // a more appropriate initial scale based on the dimensions of the entire scene
       const newScale = this.calculateScale(canvas);
-      this.sessionState.next({
+      const newSessionState: SessionState = {
         ...settings,
         scale: newScale,
         editMode: {
@@ -125,7 +101,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           cabView:
             update.elevations.length > 1 ? ModeView.MULTI : ModeView.SINGLE
         }
-      });
+      };
+      this.elevationService.updateSessionState(newSessionState);
     } else if (!!settings.scale && !!canvas && !!update) {
       this.drawScene(update, settings);
     }
@@ -154,6 +131,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           // drawing cabinet
           const cabElement = document.createElement('div');
           cabElement.id = cabinet.id;
+          cabElement.setAttribute('data-parentId', cabinet.id);
           cabElement.setAttribute('data-type', ObjectType.CAB);
           cabElement.classList.add('cabinet');
           cabElement.style.width = `${width * ppi * scale}px`;
@@ -166,9 +144,10 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           }
           // handling if active
           if (
-            !!project.activeItems.length &&
-            !!project.activeItems.filter((item) => item.itemId === cabinet.id)
-              .length
+            !!sessionState.activeItems.length &&
+            !!sessionState.activeItems.filter(
+              (item) => item.itemId === cabinet.id
+            ).length
           ) {
             cabElement.classList.add('active-object');
           }
@@ -198,6 +177,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
             const ru = cabinet.ruData[i];
             const ruElement = document.createElement('div');
             ruElement.id = cabinet.ruData[i].id;
+            ruElement.setAttribute('data-parentid', cabinet.id);
             ruElement.setAttribute('data-type', ObjectType.RU);
             ruElement.classList.add('ru');
             // handling if populated
@@ -217,8 +197,8 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
             }
             // handling if active
             if (
-              !!project.activeItems.length &&
-              !!project.activeItems.filter((item) => item.itemId === ru.id)
+              !!sessionState.activeItems.length &&
+              !!sessionState.activeItems.filter((item) => item.itemId === ru.id)
                 .length
             ) {
               ruElement.classList.add('active-object');
@@ -244,6 +224,10 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       const ruHeight = ru.populator ? ru.populator.ruSpan * 1.75 : 1.75;
       const ruContainer = document.createElement('div');
       ruContainer.id = ru.id;
+      ruContainer.setAttribute(
+        'data-parentid',
+        sessionState.editMode.singleModeObject.parentId
+      );
       ruContainer.style.height = `${ruHeight * ppi * scale}px`;
       ruContainer.style.width = `${19 * ppi * scale}px`;
       ruContainer.style.backgroundColor = '#ffffff';
@@ -261,25 +245,22 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       }
       // handling if active
       if (
-        !!project.activeItems.length &&
-        !!project.activeItems.filter((item) => item.itemId === ru.id).length
+        !!sessionState.activeItems.length &&
+        !!sessionState.activeItems.filter((item) => item.itemId === ru.id)
+          .length
       ) {
         ruContainer.classList.add('active-object');
       }
-      console.log(ruContainer);
       scene.appendChild(ruContainer);
     }
   }
 
   private async selectItem(event: MouseEvent) {
     const append = event.ctrlKey;
-    // TODO: need to check if ctrl pressed
-    // if so, continue to add to array
-    // if not, need to overwrite the array
     const id = (event.target as any).id;
+    const parentId = (event.target as any).dataset.parentid;
     const type = (event.target as any).dataset.type;
-    const item = { id, type };
-    const newState = await this.elevationService.currentProject
+    const newState = await this.elevationService.sessionState
       .pipe(
         map((currentState) => {
           if (
@@ -292,7 +273,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
             );
             return { ...currentState, activeItems };
           } else {
-            const activeItem = this.getActiveItem(item, currentState);
+            const activeItem: ItemRef = { itemId: id, parentId, type };
             const activeItems = append
               ? [...currentState.activeItems, activeItem]
               : [activeItem];
@@ -302,31 +283,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         take(1)
       )
       .toPromise();
-    this.elevationService.updateState(newState);
-  }
-
-  getActiveItem(item: { id: string; type: string }, project: Project): ItemRef {
-    switch (item.type) {
-      case ObjectType.CAB:
-        const cabinet = project.elevations.filter(
-          (ele) => ele.cabinet.id === item.id
-        )[0].cabinet;
-        return { type: item.type, itemId: cabinet.id, parentId: cabinet.id };
-      case ObjectType.RU:
-        const parentRack = project.elevations.filter((ele) =>
-          item.id.startsWith(ele.cabinet.id)
-        )[0].cabinet;
-        const selectedRU = parentRack.ruData.filter(
-          (ru) => ru.id === item.id
-        )[0];
-        return {
-          type: item.type,
-          itemId: selectedRU.id,
-          parentId: parentRack.id
-        };
-      default:
-        break;
-    }
+    this.elevationService.updateSessionState(newState);
   }
 
   // adjustments to session state
@@ -384,9 +341,9 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
           } else if (
             // toggle to single mode (only if single item is currently selected)
             currentSessionState.editMode.cabView === ModeView.MULTI &&
-            project.activeItems.length === 1
+            currentSessionState.activeItems.length === 1
           ) {
-            const singleModeObject = project.activeItems[0];
+            const singleModeObject = currentSessionState.activeItems[0];
             const cabView = ModeView.SINGLE;
             newSessionState = {
               ...currentSessionState,
@@ -410,11 +367,12 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
         } else {
           if (
             currentSessionState.editMode.ruView === ModeView.MULTI &&
-            project.activeItems.length === 1 &&
-            !!project.activeItems.filter((item) => item.type === ObjectType.RU)
-              .length
+            currentSessionState.activeItems.length === 1 &&
+            !!currentSessionState.activeItems.filter(
+              (item) => item.type === ObjectType.RU
+            ).length
           ) {
-            const singleModeObject = project.activeItems[0];
+            const singleModeObject = currentSessionState.activeItems[0];
             const ruView = ModeView.SINGLE;
             newSessionState = {
               ...currentSessionState,
@@ -479,7 +437,7 @@ export class BuildWindowSimpleRendererService implements OnDestroy {
       .toPromise();
 
     if (newSettings) {
-      this.sessionState.next(newSettings);
+      this.elevationService.updateSessionState(newSettings);
     }
   }
 
