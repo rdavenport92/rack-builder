@@ -7,6 +7,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 const materialDeps = [
   MatTabsModule,
@@ -16,7 +17,8 @@ const materialDeps = [
   MatSidenavModule,
   MatButtonModule,
   MatIconModule,
-  MatCardModule
+  MatCardModule,
+  MatToolbarModule
 ];
 
 @NgModule({

@@ -1,0 +1,62 @@
+.session-controls-container {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+
+  .mode-controls {
+    display: flex;
+    justify-content: flex-end;
+    flex: 1;
+    align-items: center;
+    border-right: 1px solid rgba(219, 219, 219, 0.342);
+
+    .mode-buttons {
+      display: flex;
+      flex: 1;
+      padding: 6px;
+      justify-content: flex-end;
+      padding-right: 32px;
+      button {
+        margin: 2px;
+      }
+    }
+  }
+
+  .orientation-controls {
+    display: flex;
+    padding: 6px;
+    padding-left: 32px;
+    padding-right: 32px;
+    .orientation-controls-button-container {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      justify-content: center;
+
+      .orientation-controls-button {
+        padding: 2px;
+      }
+    }
+  }
+
+  .view-controls {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-left: 1px solid rgba(219, 219, 219, 0.342);
+
+    .zoom-text {
+      color: white;
+      padding-left: 8px;
+    }
+
+    .zoom-buttons {
+      padding-left: 32px;
+
+      button {
+        margin: 2px;
+      }
+    }
+  }
+}

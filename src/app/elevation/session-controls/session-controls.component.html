@@ -1,0 +1,99 @@
+<div class="session-controls-container">
+  <div class="mode-controls">
+    <div class="mode-buttons" *ngIf="editMode | async as eMode">
+      <button
+        *ngIf="cabView | async as cView"
+        [color]="eMode === 'cabinet' ? 'primary' : 'accent'"
+        mat-mini-fab
+        (click)="changeEditMode('cabinet')"
+        [disabled]="(ruView | async) === 'single'"
+      >
+        <mat-icon *ngIf="cView === 'multi'">view_column</mat-icon>
+        <mat-icon *ngIf="cView === 'single'">view_carousel</mat-icon>
+      </button>
+      <button
+        *ngIf="ruView | async as rView"
+        mat-mini-fab
+        [color]="eMode === 'ru' ? 'primary' : 'accent'"
+        (click)="changeEditMode('ru')"
+      >
+        <mat-icon *ngIf="rView === 'multi'">storage</mat-icon>
+        <mat-icon *ngIf="rView === 'single'">crop_7_5</mat-icon>
+      </button>
+      <button
+        mat-mini-fab
+        [color]="eMode === 'integrate' ? 'primary' : 'accent'"
+        (click)="changeEditMode('integrate')"
+      >
+        <mat-icon>waves</mat-icon>
+      </button>
+    </div>
+  </div>
+  <div class="orientation-controls" *ngIf="orientation | async as orient">
+    <div class="orientation-controls-button-container">
+      <div class="orientation-controls-button">
+        <button
+          mat-mini-fab
+          [color]="orient === 'left' ? 'primary' : 'accent'"
+          [disabled]="(cabView | async) === 'multi'"
+          (click)="updateOrientation('left')"
+        >
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+      </div>
+    </div>
+    <div class="orientation-controls-button-container">
+      <div class="orientation-controls-button">
+        <button
+          *ngIf="orient !== 'rear'"
+          [color]="orient === 'front' ? 'primary' : 'accent'"
+          mat-fab
+          [disabled]="(cabView | async) === 'multi'"
+          (click)="updateOrientation('front')"
+        >
+          FRONT
+        </button>
+        <button
+          *ngIf="orient === 'rear'"
+          color="primary"
+          mat-fab
+          [disabled]="(cabView | async) === 'multi'"
+          (click)="updateOrientation('rear')"
+        >
+          REAR
+        </button>
+      </div>
+    </div>
+    <div class="orientation-controls-button-container">
+      <div class="orientation-controls-button">
+        <button
+          mat-mini-fab
+          [color]="orient === 'right' ? 'primary' : 'accent'"
+          [disabled]="(cabView | async) === 'multi'"
+          (click)="updateOrientation('right')"
+        >
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="view-controls">
+    <div class="zoom-buttons">
+      <button
+        (click)="zoomOut()"
+        [disabled]="!(projectLoaded | async)"
+        mat-mini-fab
+      >
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+      <button
+        (click)="zoomIn()"
+        [disabled]="!(projectLoaded | async)"
+        mat-mini-fab
+      >
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+    </div>
+    <div class="zoom-text">{{ zoomValue | async | number: '1.0-0' }}%</div>
+  </div>
+</div>

@@ -7,6 +7,11 @@
           <mat-icon *ngIf="drawer.opened">keyboard_arrow_right</mat-icon>
         </button>
       </app-build-window>
+      <mat-toolbar style="height: 74px; background-color: #4863759a;"
+        ><app-session-controls
+          class="session-controls-toolbar"
+        ></app-session-controls
+      ></mat-toolbar>
       <div class="device-editor">
         <app-item-editor></app-item-editor>
       </div>

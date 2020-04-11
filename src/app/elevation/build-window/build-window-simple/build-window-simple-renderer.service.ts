@@ -7,7 +7,8 @@ import {
   EditMode,
   ModeView,
   Cabinet,
-  RUData
+  RUData,
+  Orientation
 } from '../../elevation';
 import { ElevationService } from '../../elevation.service';
 import { BehaviorSubject, combineLatest } from 'rxjs';
@@ -86,6 +87,18 @@ export class RendererService implements OnDestroy {
         break;
       case 27: // escape
         this.unsetActive();
+        break;
+      case 100: // Numpad4
+        this.updateOrientation(Orientation.LEFT);
+        break;
+      case 101: // Numpad5
+        this.updateOrientation(Orientation.FRONT);
+        break;
+      case 102: // Numpad6
+        this.updateOrientation(Orientation.RIGHT);
+        break;
+      case 104: // Numpad8
+        this.updateOrientation(Orientation.REAR);
         break;
       default:
         break;
@@ -202,16 +215,14 @@ export class RendererService implements OnDestroy {
   ) {
     const ppi = this.pixelsPerInch;
     const scale = sessionState.scale;
-    const { width, height } = cabinet.dimensions;
-    // drawing cabinet
+    const { width, height, depth } = cabinet.dimensions;
+
+    // instantiating cabinet
     const cabElement = document.createElement('div');
     cabElement.id = cabinet.id;
     cabElement.setAttribute('data-parentid', cabinet.id);
     cabElement.setAttribute('data-type', ObjectType.CAB);
     cabElement.classList.add('cabinet');
-    cabElement.style.width = `${width * ppi * scale}px`;
-    cabElement.style.height = `${height * ppi * scale}px`;
-    cabElement.style.margin = `${4 * ppi * scale}px`;
     // handling mode
     if (sessionState.editMode.mode === EditMode.CAB) {
       cabElement.onclick = (event) => this.selectItem(event);
@@ -226,14 +237,44 @@ export class RendererService implements OnDestroy {
       cabElement.classList.add('active-object');
     }
 
-    // drawing cabinet opening
-    const cabinetOpening = document.createElement('div');
-    cabinetOpening.id = `${cabinet.id}-opening`;
-    cabinetOpening.classList.add('cabinet-opening');
-    cabinetOpening.style.width = `${19 * ppi * scale}px`;
-    cabinetOpening.style.height = `${cabinet.ruCount * 1.75 * ppi * scale}px`;
-    cabinetOpening.style.bottom = `${cabinet.openingOffset * ppi * scale}px`;
-    cabinetOpening.style.pointerEvents = 'none';
+    // instantiating rail/opening
+    const railOpening = document.createElement('div');
+    railOpening.id = `${cabinet.id}-opening`;
+    railOpening.classList.add('rail-opening-front');
+    railOpening.style.pointerEvents = 'none';
+
+    if (
+      sessionState.orientation === Orientation.FRONT ||
+      sessionState.orientation === Orientation.REAR
+    ) {
+      // drawing cabinet front front/rear perspective
+      cabElement.style.width = `${width * ppi * scale}px`;
+      cabElement.style.height = `${height * ppi * scale}px`;
+      cabElement.style.margin = `${4 * ppi * scale}px`;
+
+      // drawing rail/opening from front/rear perspective
+      railOpening.style.width = `${19 * ppi * scale}px`;
+      railOpening.style.height = `${cabinet.ruCount * 1.75 * ppi * scale}px`;
+      railOpening.style.bottom = `${cabinet.openingOffset * ppi * scale}px`;
+      railOpening.style.marginLeft = `${
+        ((width - 19) / 2) * ppi * scale - 1 // -1 to account for 1px border
+      }px`;
+    } else {
+      // drawing cabinet front side perspective
+      cabElement.style.width = `${depth * ppi * scale}px`;
+      cabElement.style.height = `${height * ppi * scale}px`;
+      cabElement.style.margin = `${4 * ppi * scale}px`;
+
+      // drawing rail/opening from side perspective
+      railOpening.style.width = `${(depth / 3) * ppi * scale}px`;
+      railOpening.style.height = `${cabinet.ruCount * 1.75 * ppi * scale}px`;
+      railOpening.style.bottom = `${cabinet.openingOffset * ppi * scale}px`;
+      if (sessionState.orientation === Orientation.LEFT) {
+        railOpening.style.left = `${cabinet.railDepth * ppi * scale}px`;
+      } else {
+        railOpening.style.right = `${cabinet.railDepth * ppi * scale}px`;
+      }
+    }
 
     // drawing ru's
     let ruSpan = 0;
@@ -245,11 +286,11 @@ export class RendererService implements OnDestroy {
       }
       const ru = cabinet.ruData[i];
       ruSpan = !!ru.populator ? ru.populator.ruSpan - 1 : ruSpan;
-      this.drawRU(ru, cabinet.id, cabinetOpening, sessionState);
+      this.drawRU(ru, cabinet.id, railOpening, sessionState);
     }
     // adding cabinet elements to dom
     scene.appendChild(cabElement);
-    cabElement.appendChild(cabinetOpening);
+    cabElement.appendChild(railOpening);
   }
 
   private drawSingleRUContainer(
@@ -507,5 +548,33 @@ export class RendererService implements OnDestroy {
 
   unsetActive() {
     this.elevationService.unsetActive();
+  }
+
+  async updateOrientation(orientation: Orientation) {
+    const newSessionState = await this.sessionState
+      .pipe(
+        map((currentSessionState) => {
+          if (currentSessionState.editMode.cabView === ModeView.SINGLE) {
+            orientation =
+              orientation === Orientation.FRONT &&
+              currentSessionState.orientation === Orientation.FRONT
+                ? Orientation.REAR
+                : orientation === Orientation.REAR &&
+                  currentSessionState.orientation === Orientation.REAR
+                ? Orientation.FRONT
+                : orientation;
+            return {
+              ...currentSessionState,
+              orientation
+            };
+          }
+        }),
+        take(1)
+      )
+      .toPromise();
+
+    if (newSessionState) {
+      this.elevationService.updateSessionState(newSessionState);
+    }
   }
 }

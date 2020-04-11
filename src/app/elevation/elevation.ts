@@ -8,6 +8,7 @@ export interface SessionState {
     ruView: ModeView;
     singleModeObject: ItemRef | undefined;
   };
+  orientation: Orientation;
   activeItems: ItemRef[];
 }
 
@@ -20,6 +21,13 @@ export enum EditMode {
 export enum ModeView {
   SINGLE = 'single',
   MULTI = 'multi'
+}
+
+export enum Orientation {
+  FRONT = 'front',
+  LEFT = 'left',
+  RIGHT = 'right',
+  REAR = 'rear'
 }
 
 export interface Project {
@@ -152,11 +160,16 @@ export function createCabinet(
 export const SAMPLE_PROJECT = {
   elevations: [
     {
-      cabinet: createCabinet('Rack 1', 42, {
-        width: 23.63,
-        height: 78.5,
-        depth: 43
-      })
+      cabinet: createCabinet(
+        'Rack 1',
+        42,
+        {
+          width: 23.63,
+          height: 78.5,
+          depth: 43
+        },
+        3
+      )
     },
     {
       cabinet: createCabinet('Rack 2', 42, {

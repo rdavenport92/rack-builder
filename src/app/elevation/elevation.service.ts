@@ -1,7 +1,6 @@
 import { Injectable, NgZone } from '@angular/core';
 
 import {
-  createCabinet,
   Project,
   SAMPLE_DEVICE_LIBRARY,
   Device,
@@ -11,7 +10,8 @@ import {
   SessionState,
   EditMode,
   ModeView,
-  SAMPLE_PROJECT
+  SAMPLE_PROJECT,
+  Orientation
 } from './elevation';
 import { BehaviorSubject, of } from 'rxjs';
 import { map, take, shareReplay, filter } from 'rxjs/operators';
@@ -29,7 +29,9 @@ export class ElevationService {
   );
 
   // sessionState maintains state of the session environment
-  private sessionStateSubject = new BehaviorSubject(undefined);
+  private sessionStateSubject = new BehaviorSubject<SessionState | undefined>(
+    undefined
+  );
   sessionState = this.sessionStateSubject.pipe(
     filter((sessionState) => !!sessionState)
   );
@@ -49,6 +51,7 @@ export class ElevationService {
         ruView: ModeView.MULTI,
         singleModeObject: undefined
       },
+      orientation: Orientation.FRONT,
       activeItems: []
     };
 

@@ -26,6 +26,7 @@ import { CabinetEditorComponent } from './elevation/item-editor/cabinet-editor/c
 import { PopulatorEditorComponent } from './elevation/item-editor/populator-editor/populator-editor.component';
 import { CableEditorComponent } from './elevation/item-editor/cable-editor/cable-editor.component';
 import { MainPanelComponent } from './elevation/item-editor/main-panel/main-panel.component';
+import { SessionControlsComponent } from './elevation/session-controls/session-controls.component';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
@@ -44,6 +45,7 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
     PopulatorEditorComponent,
     CableEditorComponent,
     MainPanelComponent,
+    SessionControlsComponent,
   ],
   imports: [
     BrowserModule,
