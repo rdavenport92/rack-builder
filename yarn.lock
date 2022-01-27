@@ -206,10 +206,10 @@
   resolved "https://registry.yarnpkg.com/@angular/core/-/core-9.0.2.tgz#250093b6a4d3137e2cc30e73e6cee919f1386165"
   integrity sha512-ccVPR6RZo2s9O9phO0TJ60QZ0WA7qfUMzo0xnpBW0XGcbTzLEn9upvs+0PX64f9UpnHz/MQo0wsqYvTLuoz7Yw==
 
-"@angular/forms@^9.0.0 || ^10.0.0-0":
-  version "9.1.0"
-  resolved "https://registry.yarnpkg.com/@angular/forms/-/forms-9.1.0.tgz#de14e34aa37bd41a28f93fee8666cd7f6393078c"
-  integrity sha512-5GC8HQlPChPV+168zLlm4yj4syA6N9ChSKV0tmzj1zIfMcub1UAOaB9IYaXRHQsjPFh9OuQXwmkzScyAfhEVjA==
+"@angular/forms@9.0.2":
+  version "9.0.2"
+  resolved "https://registry.yarnpkg.com/@angular/forms/-/forms-9.0.2.tgz#917e8f85a2f358bbcdf1b1946b7afa6f5460b5ed"
+  integrity sha512-qXEth7yeCd+5i6QyvllXnh/Rkzh16raFX5nfI7mgKHjWMik15Ua8wkVhDX9b5gizWeEyZtZcMGsTbbOQy0Ft3Q==
 
 "@angular/language-service@9.0.2":
   version "9.0.2"
@@ -11060,10 +11060,10 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
-three@*, three@0.115.0:
-  version "0.115.0"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.115.0.tgz#540d800c381b9da2334c024f0fbe4d23f84eb05e"
-  integrity sha512-mAV2Ky3RdcbdSbR9capI+tKLvRldWYxd4151PZTT/o7+U2jh9Is3a4KmnYwzyUAhB2ZA3pXSgCd2DOY4Tj5kow==
+three@*, three@0.137.0:
+  version "0.137.0"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.137.0.tgz#0ebd6ba66637a332c31f234bcdd35aeec071a6e3"
+  integrity sha512-rzSDhia6cU35UCy6y+zEEws6vSgytfHqFMSaBvUcySgzwvDO6vETyswtSNi/+aVqJw8WLMwyT1mlQQ1T/dxxOA==
 
 throttleit@0.0.2:
   version "0.0.2"
